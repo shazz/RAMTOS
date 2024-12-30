@@ -10,9 +10,17 @@ This branch is adding support for:
 
 ### Prerequisites
 
-- Copy `vasmm68k_mot` in `tools/`
-- Copy `TOS206FR.IMG` in `TOS/`
-- [Optional] Install Python 3.12+ with `capstone` pip library to generate TOS non-reloc address candidates
+- Get `vasm` and copy `vasmm68k_mot` in `tools/`
+- Get and copy `TOS206FR.IMG` in `TOS/`
+- Copy `TOS206FR.IMG` as `RTOS.IMG` in the root directory for `RAMTOS8B`
+- Install Python 3.12+ with `capstone` pip library to generate TOS non-reloc address candidates [Optional]
+
+### Important note
+
+RAMTOS / SELTOS is not as compatible as ROM-based TOS (in addtion to existing TOS versions incompatibilities) so don't expect most existing software to work as is.
+Examples of applications which DON'T work:
+- ACSI2STM Gemdrive driver
+- Pera Putnik's Image Runner
 
 ### How does it work ?
 
