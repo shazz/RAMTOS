@@ -12,6 +12,7 @@ This branch is adding support for:
 
 - Copy `vasmm68k_mot` in `tools/`
 - Copy `TOS206FR.IMG` in `TOS/`
+- [Optional] Install Python 3.12+ with `capstone` pip library to generate TOS non-reloc address candidates
 
 ### How does it work ?
 
