@@ -8,7 +8,13 @@ Please refer to this [page](https://atari.8bitchip.info/astopensw.php) for more 
 This branch is adding support for:
 - TOS 2.06 FR
 
+### Prerequisites
+
+- Copy `vasmm68k_mot` in `tools/`
+- Copy `TOS206FR.IMG` in `TOS/`
+
 ### How does it work ?
+
 From original README:
 
 > Purpose of this program is making possible work with diverse versions of TOS without changing (EP)ROM's in machine. 1 MB of RAM is minimum requirement for use, because used TOS is placed in RAM, and it decreases available RAM for 192-256KB.
