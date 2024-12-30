@@ -212,6 +212,7 @@ choose
   asl.l #1,d0
   add.l d0,a2 *selected TOS number here
   move.w (a2),d0
+
   
 ;get parameter pointer  
   
@@ -321,7 +322,7 @@ loadit
  	move.w 16(a2),d4  *end address high word
  	move.l 18(a2),d5 *length
 	
-	sub.w d3,d2 *phystop is allways on round adress
+	sub.w d3,d2 *phystop is always on round adress
 	
 
 	move.l a6,a5
@@ -552,8 +553,6 @@ issw206
   rts
 
 
-
-
   
 *further test needed for patched version
 
@@ -712,8 +711,6 @@ error ds.w 1
 ftosp ds.l 1
 fscount ds.w 1
 
-
-
 *parameter table for each TOS version:
 *FileName-14 bytes
 *Base address, end address - just words for compare
@@ -813,7 +810,8 @@ nam11  ds.b 14
   dc.l $54323036  
 
 
-*relocating table - this are adresses witch are not for reloc!	
+
+*relocating table- this are adresses witch are not for reloc!	
 ;German TOS 1.00
 nonr1 	dc.l $17c8,$17d8,$252e,$2566
 	dc.l $28e6,$2b9a,$85ba,$a8c8
@@ -933,6 +931,7 @@ nonr7	DC.L $117E,$1514,$3A4C
 	DC.L $288CA,$29676,$297B2,$29B52
 	DC.L $29D08,$2A5B2,$2A6B2,$2EC00,0 *23 ENTRY 
 
+
 ;Swedish TOS 2.06
 nonr8 
 	DC.L	$89A,$13D0
@@ -960,6 +959,7 @@ nonr8
 	DC.L	$3A364,$3A4FE
 	DC.L	$3A68C,$3A690
 	DC.L	$3B750,0
+
 
 
    section bss

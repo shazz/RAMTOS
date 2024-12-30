@@ -1,83 +1,87 @@
 
-;TOS  Ram loader
-;Version for direct load at  27. July 2006.
-;Added support for Swedish TOS 2.06 on March 9 2008.
+; TOS  Ram loader
+; Version for direct load at  27. July 2006.
+; Added support for Swedish TOS 2.06 on March 9 2008.
+; Cleaning and added support for French TOS 2.06 by Shazz / MJJ Prod - 12/2024
 
 ; load  file immed.
-;P. Putnik
+; P. Putnik
 
-;Recognises TOS 1.00 German,  US & (UK- ?? not tested)
-;TOS 1.04 US & UK & German
-;TOS 2.06 German
-;TOS 2.06 US & UK
-;'Super'TOS 2.06 UK patched
-;TOS 2.06 Swedish
+; Recognises TOS 1.00 German,  US & (UK- ?? not tested)
+; TOS 1.04 US & UK & German
+; TOS 2.06 German
+; TOS 2.06 US & UK
+; 'Super'TOS 2.06 UK patched
+; TOS 2.06 Swedish
+; TOS 2.06 French
 
-;Principle of work:
+; Principle of work:
 
-;We need to relocate all 4-byte (long) addresses
+; We need to relocate all 4-byte (long) addresses
 ; inside ROM-TOS for new position in RAM
-;It can be done with table containing all those addresses
-;We need separate tables for every TOS version,  since diverse languages
-;have diverse locations (addresses) of code and datas
-;For supporting some 10 TOS versions 10 tables would take
-; a lot of space
+; It can be done with table containing all those addresses
+; We need separate tables for every TOS version, since diverse languages
+; have diverse locations (addresses) of code and datas
+; For supporting some 10 TOS versions 10 tables would take a lot of space
 
-;but there is a way with much shorter tables:
-;All addresses for relocating must be in ROM address range
-;so we can seek by it: for instance if ROM is in range
-;$E00000-$E3FFFF we can just look high word of address
-; is it in range $E0 to $E3
-;So will find all addresses to relocate
-;But it will find some code,  datas too,  which are not absolute ROM addresses
-;so we need to make tables containing those,  not to reloc addresses
-;Such tables are much shorter
-;Here they are at end of code with non_rel_tos100de - non_rel_tos100de1  labels
-;Finding all those addresses is most of work when adding support for new
-;TOS (language) version
-;P. Putnik
-
+; But there is a way with much shorter tables:
+; All addresses for relocating must be in ROM address range
+; so we can seek by it: for instance if ROM is in range
+; $E00000-$E3FFFF we can just look high word of address is it in range $E0 to $E3
+; So will find all addresses to relocate
+; But it will find some code, data too, which are not absolute ROM addresses
+; so we need to make tables containing those,  not to reloc addresses
+; Such tables are much shorter
+; Here they are at end of code with non_rel_tos100de - non_rel_tos100de1 labels
+; Finding all those addresses is most of work when adding support for new
+; TOS (language) version
 
 ; ---------------------------------------------------------------
-; 
+; Constants
+; ---------------------------------------------------------------
+MAX_FILES        equ 9
+NOT_SUPPORTED    equ 13
+
+; ---------------------------------------------------------------
+; Main program
 ; ---------------------------------------------------------------
 begin:
     lea     stack(pc), sp
 
     ;First print message
-
-    lea     titmes(pc), a0
+    lea     title_message(pc), a0
     bsr     show_message
 
-    ifeq _NO_SELECT_
-
+    ifeq _RAMTOS_
     ;check command line
     moveq   #0, d2
     lea     begin-128(pc), a2
     move.b  (a2)+, d2
     tst.b   d2
-    beq     search ;no command line
+    beq     search_tos_images           ;no command line
 
     ;pick filename and add extension img if missing
     cmp.b   #13, d2
-    bge     search  ;ignore too long command line
+    bge     search_tos_images           ;ignore too long command line
     move.l  d2, d3
 
     ;search point
     move.l  a2, a3
     moveq   #8, d4
-seapol:
+.loop:
     tst.b   (a2)
-    beq.s   addext
+    beq.s   .add_extension
+
     cmp.b   #13, (a2)
-    beq.s   addext
+    beq.s   .add_extension
+
     cmp.b   #'.', (a2)+
-    dbeq    d4, seapol
+    dbeq    d4, .loop
 
     tst.w   d4
     bpl.s   gotext
 
-addext:
+.add_extension:
     move.b  #'.', (a2)+
     move.b  #'I', (a2)+
     move.b  #'M', (a2)+
@@ -85,11 +89,11 @@ addext:
     clr.b   (a2)
 
 ; ---------------------------------------------------------------
-; 
+;
 ; ---------------------------------------------------------------
 gotext:
     lea     -30(a3), a3  ;precompens. offset
-    move.l  a3, dtas
+    move.l  a3, DTA
 
     bsr     load_rom
 
@@ -97,36 +101,36 @@ gotext:
     beq.s   which2
 
     cmp.w   #1, d0
-    beq     notosf
+    beq     show_image_not_found_msg
 
     cmp.w   #2, d0
-    beq     loaderr
+    beq     show_loaderr_msg
 
 ; ---------------------------------------------------------------
-; 
+;
 ; ---------------------------------------------------------------
 which2:
-
-    lea     founm(pc), a0
+    lea     found_message(pc), a0
     bsr     show_message
 
     bsr     find_version           ; d0 will contain the entry number
-    cmp.w   #13, d0
-    beq     unsupi
+    cmp.w   #NOT_SUPPORTED, d0
+    beq     show_unsupported_msg
 
     ;d0 holds TOS version number
-
     move.l  d0, -(sp)
-    bsr     putfiln
+    bsr     insert_filename
     move.l  (sp)+, d0
 
-    bra     get_params ;to load...
+    bra     get_params              ; to load...
     endc
 
 ; ---------------------------------------------------------------
-; Search for ROM images
+; search_tos_images for ROM images
 ; ---------------------------------------------------------------
-search:
+search_tos_images:
+
+    ifeq _SELTOS_
     ;First check is already installed
     pea     check_installed(pc)
     move.w  #38, -(sp)
@@ -134,28 +138,40 @@ search:
     addq.l  #6, sp
 
     tst.b   is_installed
-    bne     apex                    ;quit silently if already installed
+    bne     quit                    ;quit silently if already installed
+    endc
 
-    lea     searchm(pc), a0
+    lea     search_message(pc), a0
     bsr     show_message
 
-    ifeq _NO_SELECT_
+    ifeq _RAMTOS_
     move.w  #0, -(sp)
-    pea     fnam(pc)
-    move.w  #78, -(sp)  ;Fsfirst
+    pea     filename(pc)
+    move.w  #78, -(sp)                  ; Fsfirst Fsfirst() searches the file/pathspec given
+                                        ; for the first occurrence of a file or
+                                        ; subdirectory with named attributes and if found,
+                                        ; fill in the current DTA with that file’s information.
     trap    #1
     addq.l  #8, sp
 
     tst.w   d0
-    bne     notosf
+    bne     show_image_not_found_msg
 
     ;Get address of DTA
-    move.w  #$2f, -(sp)
+    ; typedef struct {
+    ;     BYTE d_reserved[21];
+    ;     BYTE d_attrib;
+    ;     UWORD d_time;
+    ;     UWORD d_date;
+    ;     LONG d_length;
+    ;     char d_fname[14];
+    ; } DTA;
+    move.w  #$2f, -(sp)                 ; Fgetdta() returns current DTA (Disk Transfer Address)
     trap    #1
     addq.l  #2, sp
 
     ;store DTA address
-    move.l  d0, dtas
+    move.l  d0, DTA
     endc
 
     ;Load ROM TOS header,  first 32 byte
@@ -163,33 +179,85 @@ search:
 
     tst.w   d0
     beq.s   which
+
     cmp.w   #1, d0
-    beq     notosf
+    beq     show_image_not_found_msg
+
     cmp.w   #2, d0
-    beq     loaderr
+    beq     show_loaderr_msg
 
 ; ---------------------------------------------------------------
-; 
+;
 ; ---------------------------------------------------------------
 which:
-    bsr     find_version
-    cmp.w   #13, d0
-    beq     unsupi ;instead notosf
+    ifeq _SELTOS_
+    lea     found_message(pc),a0
+    bsr     show_message
+    endc
 
-    ifeq _NO_SELECT_
-    lea     ftosl(pc), a2
+    bsr     find_version
+    cmp.w   #NOT_SUPPORTED, d0
+    beq     show_unsupported_msg ;instead show_image_not_found_msg
+
+    ifeq _RAMTOS_
+    lea     TOS_list(pc), a2
     move.w  d0, (a2)+  ;put in list
     move.l  a2, ftosp ;set  pointer
 
-    bsr     putfiln
+    bsr     insert_filename
 
+    ifeq _SELTOS_
+    move.w  #1, fscount
+
+fsnext:
+    move.w  #79, -(sp)                   ; fsnext
+    trap    #1
+    add.l   #2, sp
+
+    tst.w   d0
+    bmi     select
+
+    bsr     load_rom
+
+    tst.w   d0
+    bne.s   check_next
+
+    bsr     find_version
+    cmp.w   #NOT_SUPPORTED, d0
+    beq.s   check_next
+
+    move.l  ftosp(pc), a2
+    move.w  d0, (a2)+                   ; put in list
+    move.l  a2, ftosp                   ; set  pointer
+    addq.w  #1, fscount
+
+    bsr     insert_filename
+
+check_next:
+    cmp.w   #MAX_FILES, fscount         ; is max. count reached ?
+    bne.s   fsnext
+
+select:
+    move.w  fscount(pc), d3
+    add.w   #'0', d3
+    move.b  d3, selection2_message
+    lea     selection_message(pc), a0
+    bsr     show_message
+
+    bsr     get_input_key
+
+    sub.b   #'1', d0
+    bmi.s   select
+
+    else
     ;look other IMG files,  max 9 total
     moveq   #0, d0
+    endc
 
-    lea     ftosl(pc), a2
+    lea     TOS_list(pc), a2
     ext.l   d0
     asl.l   #1, d0
-    add.l   d0, a2                      ;selected TOS number here
+    add.l   d0, a2                      ; selected TOS number here
     move.w  (a2), d0
     endc
 
@@ -210,60 +278,72 @@ get_params:
     addq.w  #6, sp
     move.l  d0, -(sp)
 
-;Check is yet installed
-;    cmpi.l    #$54323036, $3F8.w ;tos206
-;    beq.s    anyway
-;    cmpi.l    #$54313030, $3F8.w ;tos100
-;    beq.s  anyway
-;    cmpi.l    #$54313034, $3F8.w ;tos104
-;    bne.s    loadit
+    ifeq _SELTOS_
+    ;Check is yet installed
+    cmpi.l  #$54323036, $3F8.w ;tos206
+    beq.s   anyway
+    cmpi.l  #$54313030, $3F8.w ;tos100
+    beq.s   anyway
+    cmpi.l  #$54313034, $3F8.w ;tos104
+    bne.s   load_tos_image
 
-;anyway
-;    moveq #0, d0  ;no error sign
-;    bra suexit
+anyway:
+    lea     anyway_message(pc),a0
+	bsr     show_message
 
-; ---------------------------------------------------------------
-; 
-; ---------------------------------------------------------------
-loadit
-    clr.w   -(sp)
-    ifeq _NO_SELECT_
-    move.l  selected_params(pc), -(sp)      ;selected filename
-    else
-    pea     fnam(pc)                ; filename
+	bsr     get_input_key
+	bclr    #5,d0  ;upper case
+	cmp.b   #'Y',d0
+	beq.s   load_tos_image
+
+	moveq   #0,d0  ;no error sign
+	bra     switch_user_mode
     endc
-    move.w  #$3D, -(sp)              ; fopen
+
+; ---------------------------------------------------------------
+; load_tos_image
+; ---------------------------------------------------------------
+load_tos_image:
+    clr.w   -(sp)
+
+    ifeq _RAMTOS_
+    move.l  selected_params(pc), -(sp)  ; selected filename entry
+    else
+    pea     filename(pc)                ; hardcoded filename
+    endc
+
+    move.w  #$3D, -(sp)                 ; fopen
     trap    #1
     addq.w  #8, sp
 
-    move.w  d0, handle                ; handle
-    bmi     suerr
+    move.w  d0, handle                  ; handle
+    bmi     load_error
 
 
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2  ;selected TOS's length
-    movea.l $42E.w, a6 ;phystop
+    move.l  18(a2), d2                  ;selected TOS's length
+    movea.l $42E.w, a6                  ;phystop
     suba.l  d2, a6
 
-    move.l  a6, newphy ;new phystop
+    move.l  a6, newphy                  ;new phystop
 
-    move.w  #$FFFF, -(sp) ;resol. stay
+    move.w  #$FFFF, -(sp)               ;resol. stay
     movea.l a6, a5
-    suba.l  #$8000, a5 ;better way
+    suba.l  #$8000, a5                  ;better way
     move.l  a5, -(sp)
     move.l  a5, -(sp)
     move.w  #5, -(sp)
     trap    #14
     lea     $C(sp), sp
 
-    pea     instm(pc) ;Install message
+    pea     loading_message(pc)         ;Install message
     move.w  #9, -(sp)
     trap    #1
     addq.w  #6, sp
 
     move.l  newphy(pc), -(sp)
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2  ;selected TOS's length
+    move.l  18(a2), d2                  ;selected TOS's length
     move.l  d2, -(sp)
     move.w  handle(pc), -(sp)
     move.w  #$3F, -(sp)
@@ -271,22 +351,22 @@ loadit
     lea     $C(sp), sp
 
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2  ;selected TOS's length
+    move.l  18(a2), d2                  ;selected TOS's length
 
     cmp.l   d2, d0
-    bne     suerr ;load error
+    bne     load_error                  ;load error
 
     move.w  handle(pc), -(sp)
-    move.w  #$3E, -(sp) ;fclose
+    move.w  #$3E, -(sp)                 ; fclose
     trap    #1
     addq.w  #4, sp
 
     move.l  newphy(pc), d0
     move.l  d0, a6
 
-    move.l  a6, $42e.w ;now change phystop
+    move.l  a6, $42e.w                  ; now change phystop
 
-    pea     relom(pc) ;relocating message
+    pea     relocating_message(pc)      ; relocating message
     move.w  #9, -(sp)
     trap    #1
     addq.w  #6, sp
@@ -294,21 +374,21 @@ loadit
     move.l  a6, d2
     swap    d2
     move.l  selected_params(pc), a2
-    move.w  14(a2), d3  ;selected TOS's base high word
-    move.w  16(a2), d4  ;end address high word
-    move.l  18(a2), d5 ;length
+    move.w  14(a2), d3                  ; selected TOS's base high word
+    move.w  16(a2), d4                  ; end address high word
+    move.l  18(a2), d5                  ; length
 
-    sub.w   d3, d2 ;phystop is always on round adress
+    sub.w   d3, d2                      ; phystop is always on round adress
 
     move.l  a6, a5
     move.l  a6, a4
-    add.l   d5, a5 ;end adr.
+    add.l   d5, a5                      ; end adr.
 
-    move.l  22(a2), a1 ;don't reloc table
+    move.l  22(a2), a1                  ; don't reloc table
     moveq   #0, d0
 
 ; ---------------------------------------------------------------
-; 
+;
 ; ---------------------------------------------------------------
 reloc:
     move.w  (a6), d1
@@ -316,7 +396,7 @@ reloc:
     blt.s   notrom
     cmp.w   d4, d1
     bge.s   notrom
-    cmp.l   (a1), d0 ;no reloc if equ !
+    cmp.l   (a1), d0                    ;no reloc if equ !
     beq.s   advnonr
     add.w   d2, d1
     move.w  d1, (a6)
@@ -328,31 +408,31 @@ notrom
     cmp.l   a5, a6
     blt.s   reloc
 
-    move.l  28(a2), $3F8.w  ;sign of install version 'check_de_100 - check_de_206'
+    move.l  28(a2), $3F8.w              ;sign of install version 'check_de_100 - check_de_206'
     move.l  a4, $3FC.w
 
-;Ensure restart of new TOS after reset with button (backside)
+;   Ensure restart of new TOS after reset with button (backside)
     move.l  #$31415926, $426.w
 
-    move.w  26(a2), d2  ;reset entry offset
+    move.w  26(a2), d2                  ;reset entry offset
     ext.l   d2
     move.l  a4, a5
-    add.l   d2, a5 ;point after resvector
+    add.l   d2, a5                      ;point after resvector
     move.l  a5, $42a.w
-    move.l  #$5555aaaa, $51a.w ;This is due TOS 1.00 !
+    move.l  #$5555aaaa, $51a.w          ;This is due TOS 1.00 !
 
-    jmp     (a4) ;reset via ramtos!
+    jmp     (a4)                        ;reset via ramtos!
 
 advnonr:
     addq.l  #4, a1
     bra.s   notrom
 
-suerr:
-    lea     loaderrt(pc), a0
+load_error:
+    lea     load_err_message(pc), a0
     bsr     show_message
 
 ;Back to user
-suexit:
+switch_user_mode:
     move.w  #$20, -(sp)
     trap    #1
     addq.w  #6, sp
@@ -360,28 +440,27 @@ suexit:
 keywait:
     bsr.s   get_input_key
 
-apex:
+quit:
     pea     $4C0000
     trap    #1
 
-loaderr:
-    lea     loaderrt(pc), a0
-    bra.s   prim
+show_loaderr_msg:
+    lea     load_err_message(pc), a0
+    bra.s   print_and_wait
 
-unsupi:
-    lea     unsupm(pc), a0
-    bra.s   prim
+show_unsupported_msg:
+    lea     unsupported_message(pc), a0
+    bra.s   print_and_wait
 
-;image not found
-notosf:
-    lea    imnfm(pc), a0
+show_image_not_found_msg:
+    lea    not_found_message(pc), a0
 
-prim:
+print_and_wait:
     bsr.s   show_message
     bra.s   keywait
 
 ; ---------------------------------------------------------------
-; Routines 
+; Routines
 ; ---------------------------------------------------------------
 
 show_message:
@@ -404,18 +483,18 @@ check_installed:
     rts
 
 load_rom:
-    ifeq _NO_SELECT_
-    move.l  dtas(pc), d1
+    ifeq _RAMTOS_
+    move.l  DTA(pc), d1
     move.l  d1, a1
     lea     30(a1), a1
     endc
 
     clr.w   error
     clr.w   -(sp)
-    ifeq _NO_SELECT_
+    ifeq _RAMTOS_
     pea     (a1)
     else
-    pea     fnam(pc)
+    pea     filename(pc)
     endc
 
     move.w  #$3D, -(sp)                 ; fopen
@@ -468,7 +547,7 @@ find_version:
     beq     check_de_206
 
 not_supported:
-    moveq   #13, d0                 ;not found supported
+    moveq   #NOT_SUPPORTED, d0                     ; not found supported
     rts
 
 ; ---------------------------------------------------------------
@@ -479,7 +558,7 @@ check_de_100:
     bne.s   check_uk_100
 
     lea     t1m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #1, d0
     rts
 
@@ -488,7 +567,7 @@ check_uk_100:
     bne.s   check_us_100
 
     lea     t8m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #8, d0
     rts
 
@@ -497,7 +576,7 @@ check_us_100:
     bne.s   not_supported
 
     lea     t9m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #9, d0
     rts
 
@@ -511,12 +590,12 @@ check_fr_102:
 ; TOS 1.04
 ; ---------------------------------------------------------------
 check_uk_104:
-    cmp.w #7, $1c(a1) ;is English
-    bne.s check_us_104
+    cmp.w   #7, $1c(a1) ;is English
+    bne.s   check_us_104
 
-    lea t2m(pc), a0
-    bsr cmess
-    moveq #2, d0
+    lea     t2m(pc), a0
+    bsr     show_found_TOS_msg
+    moveq   #2, d0
     rts
 
 check_us_104:
@@ -524,7 +603,7 @@ check_us_104:
     bne.s   check_de_104
 
     lea     t7m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #7, d0
     rts
 
@@ -533,7 +612,7 @@ check_de_104:
     bne.s   not_supported
 
     lea     t10m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #10, d0
     rts
 
@@ -545,7 +624,7 @@ check_de_206:
     bne.s   check_us_206
 
     lea     t3m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #3, d0
     rts
 
@@ -558,7 +637,7 @@ check_us_206:
     bne.s   check_sw_206
 
     lea     t6m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #6, d0
     rts
 
@@ -568,7 +647,7 @@ check_sw_206:
     bne.s   check_fr_206
 
     lea     t11m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #11, d0
     rts
 
@@ -578,15 +657,18 @@ check_fr_206:
     bne     not_supported
 
     lea     t12m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #12, d0
     rts
 
 ;further test needed for patched version
 
+; ---------------------------------------------------------------
+;
+; ---------------------------------------------------------------
 ispat2
-    ifeq _NO_SELECT_
-    move.l  dtas(pc), d1
+    ifeq _RAMTOS_
+    move.l  DTA(pc), d1
     move.l  d1, a1
     lea     30(a1), a1
     endc
@@ -594,10 +676,10 @@ ispat2
     clr.w   error
     clr.w   -(sp)
 
-    ifeq _NO_SELECT_
+    ifeq _RAMTOS_
     pea     (a1)
     else
-    pea     fnam(pc)
+    pea     filename(pc)
     endc
 
     move.w  #$3D, -(sp) ;fopen
@@ -605,7 +687,7 @@ ispat2
     addq.w  #8, sp
 
     move.w  d0, handle ;handle
-    bmi.s   ferr2 ;TOS.IMG not found
+    bmi.s   on_error ;TOS.IMG not found
 
 
     clr.w   -(sp)
@@ -623,7 +705,7 @@ ispat2
     lea     $C(sp), sp
 
     cmp.l   #2, d0
-    bne.s   ferr2 ;load error
+    bne.s   on_error ;load error
 
     move.w  handle(pc), -(sp)
     move.w  #$3E, -(sp) ;fclose
@@ -632,23 +714,34 @@ ispat2
 
 
     cmp.w   #$00e0, stack ;is patched
-    beq.s   t2ep
+    beq.s   patched_TOS
 
     lea     t4m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #4, d0
     rts
 
-t2ep:
+; ---------------------------------------------------------------
+; patched_TOS
+; for UK SuperTOS
+; ---------------------------------------------------------------
+patched_TOS:
     lea     t5m(pc), a0
-    bsr     cmess
+    bsr     show_found_TOS_msg
     moveq   #5, d0
     rts
 
-ferr2:
+; ---------------------------------------------------------------
+;
+; ---------------------------------------------------------------
+on_error:
     bra     not_supported  ;for now
 
-cmess:
+; ---------------------------------------------------------------
+; show_found_TOS_msg
+; a0 = TOS name message
+; ---------------------------------------------------------------
+show_found_TOS_msg:
     lea     founc(pc), a2
     addq.w  #1, (a2)
     move.w  (a2), d2
@@ -656,47 +749,43 @@ cmess:
 
     move.b  d2, founp+2
 
-    move.l  a0, -(sp)
+    move.l  a0, -(sp)               ; save a0
 
     lea     founp(pc), a0
     bsr     show_message
 
-    move.l  (sp)+, a0
+    move.l  (sp)+, a0               ; restore a0
     bra     show_message
 
-    ifeq _NO_SELECT_
-;put filename to propr. TOS param. table
-putfiln: 
+; ---------------------------------------------------------------
+; put filename to propr. TOS param. table
+; ---------------------------------------------------------------
+    ifeq _RAMTOS_
+insert_filename:
 
     ext.l   d0
     mulu    #32, d0
     lea     param1_tos100de-32(pc), a2
     add.l   d0, a2
-    move.l  dtas(pc), a1
+    move.l  DTA(pc), a1
     lea     30(a1), a1
     moveq   #13, d0
 
-putnlop
+.loop
     move.b  (a1)+, (a2)+
-    dbf     d0, putnlop
+    dbf     d0, .loop
     rts
 
     endc
 
-newphy:
-     ds.l   1
-
-handle:    
-    dc.w    0 ;place for handle
-
 ; -------------------------------------------------------------
 ; Messages
 ; -------------------------------------------------------------
-titmes:
+title_message:
     dc.b    13, 10, 'RAMTOS v8 by P. Putnik & Shazz', 0
-searchm:
+search_message:
     dc.b    13, 10, 'Searching ROM-TOS images...', 0
-founm:
+found_message:
     dc.b    13, 10, 'Found:', 0
 
 t1m:    dc.b 'TOS 1.00 German', 0
@@ -713,51 +802,60 @@ t11m    dc.b 'TOS 2.06 Swedish', 0
 t12m    dc.b 'TOS 2.06 French', 0
 
 ;Image file name
-fnam:
-    ifeq _NO_SELECT_
-    dc.b    ';.IMG', 0
+filename:
+    ifeq _RAMTOS_
+    dc.b    '*.IMG', 0
     else
     dc.b    'RTOS.IMG', 0
     endc
 
-loaderrt:
+load_err_message:
     dc.b    13, 10, 'Error while loading!', 0
 
-anywam:
+anyway_message:
     dc.b    13, 10, 'RAMTOS already installed.'
     dc.b    13, 10, 'Load anyway ? ', 0
 
 ;Install message
-instm:
-     dc.b   13, 10, 'Loading...', 0
+loading_message:
+    dc.b    13, 10, 'Loading...', 0
 
 ;Relocating message
-relom:
+relocating_message:
     dc.b    13, ' Relocating...', 0
 
 ;image not found message
-imnfm:
+not_found_message:
     dc.b    13, 10, 'TOS image not found.', 0
 
-unsupm:
+unsupported_message:
     dc.b    13, 10, 'Unsupported TOS image file.', 0
 
-    ifeq _NO_SELECT_
-choosm:
-    dc.b    13, 10, 13, 10, 'Choose TOS to install  1-'
-choosm2:
+    ifeq _RAMTOS_
+selection_message:
+    dc.b    13, 10, 13, 10, 'select TOS to install  1-'
+selection2_message:
     dc.b    '1.', 0
     endc
 
+; -------------------------------------------------------------
+; Variables
+; -------------------------------------------------------------
 founp:
     dc.b    13, 10, "x: ", 0
     even
 
 founc:      dc.w 0
-dtas:       ds.l 1
+DTA:        ds.l 1
 error:      ds.w 1
 ftosp:      ds.l 1
 fscount:    ds.w 1
+
+is_installed:
+    dc.w    0                       ; flag, set to 1 if RAMTOS already installed
+
+handle:
+    dc.w    0 ;place for handle
 
 ; -------------------------------------------------------------
 ; parameter table for each TOS
@@ -772,7 +870,7 @@ fscount:    ds.w 1
 
 ;German 1.00
 param1_tos100de:
-    ds.b    14          
+    ds.b    14
     dc.w    $00FC, $00FF
     dc.l    $30000
     dc.l    non_rel_tos100de
@@ -880,10 +978,10 @@ param12_tos206fr
 
 ; diff
 ;           US 2.06         SW 2.06             UK 2.06         DE 2.06
-;     ds.b  
+;     ds.b
 ;     dc.w  $00E0, $00E4    $00E0, $00E4        $00E0, $00E4    $00E0, $00E4
 ;     dc.l  $40000          $40000              $40000          $40000
-;     dc.l  
+;     dc.l
 ;     dc.w  $7e             $7e                 $7e             $7e
 ;     dc.l  $54323036       $54323036           $54323036       $54323036
 
@@ -1262,28 +1360,23 @@ non_rel_tos206fr:
     dc.l    0
 
 ; -------------------------------------------------------------
-; data
-; -------------------------------------------------------------
-   section data
-
-is_installed:
-    dc.w    0                       ; flag, set to 1 if RAMTOS already installed
-
-; -------------------------------------------------------------
 ; bss
 ; -------------------------------------------------------------
    section bss
 
+newphy:
+    ds.l   1
+
 selected_params
     ds.l    1
 
-    ifeq _NO_SELECT_
-ftosl:
-    ds.w    9      ;max 9 TOS in list
+    ifeq _RAMTOS_
+TOS_list:
+    ds.w    MAX_FILES       ; max MAX_FILES (9) TOS in list
     endc
 
-    ds.b    500    ;place for stack
+    ds.b    500             ;place for stack
 
 stack:
-    ds.b    485000 ;place for load & screen & decomp
+    ds.b    485000          ;place for load & screen & decomp
 
