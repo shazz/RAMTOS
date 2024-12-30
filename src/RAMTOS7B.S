@@ -40,7 +40,7 @@
 
 
 
-begin	lea	stack(pc),a7
+begin    lea    stack(pc),a7
 
 ;First print message
 
@@ -104,126 +104,126 @@ getpp  mulu #32,d0
   move.l a2,selpoint  ;store it
   
 
-	pea	0.w
-	move.w	#$20,-(a7)
-	trap	#1 *supervisor
-	addq.w	#6,a7
- 	move.l d0,-(sp)
+    pea    0.w
+    move.w    #$20,-(a7)
+    trap    #1 *supervisor
+    addq.w    #6,a7
+    move.l d0,-(sp)
 
-	
+    
 loadit
-        clr.w   -(sp)
-	pea    fnam(pc)  * filename
-	move.w	#$3D,-(a7) *fopen
-	trap	#1
-	addq.w	#8,a7
-	
-	move.w	d0,handl *handle
-	bmi	suerr 
-	
-	
-	move.l selpoint(pc),a2
-	move.l 18(a2),d2  *selected TOS's length
-	movea.l	$42E.w,a6 *phystop
-	suba.l	d2,a6
+    clr.w   -(sp)
+    pea    fnam(pc)  * filename
+    move.w    #$3D,-(a7) *fopen
+    trap    #1
+    addq.w    #8,a7
+    
+    move.w    d0,handl *handle
+    bmi    suerr 
+    
+    
+    move.l selpoint(pc),a2
+    move.l 18(a2),d2  *selected TOS's length
+    movea.l    $42E.w,a6 *phystop
+    suba.l    d2,a6
  
-	move.l	a6,newphy *new phystop
-	
-	move.w	#$FFFF,-(a7) *resol. stay
-	movea.l	a6,a5
-	suba.l	#$8000,a5 *better way
-	move.l	a5,-(a7)
-	move.l	a5,-(a7)
-	move.w	#5,-(a7)
-	trap	#14
-	lea	$C(a7),a7
-	
-	pea	instm(pc) *Install message
-	move.w	#9,-(a7)
-	trap	#1
-	addq.w	#6,a7
-	
-	move.l newphy(pc),-(sp)
-	move.l selpoint(pc),a2
-	move.l 18(a2),d2  *selected TOS's length
-	move.l d2,-(sp)
-	move.w	handl(pc),-(a7)
-	move.w	#$3F,-(a7)
-	trap	#1
-	lea	$C(a7),a7
+    move.l    a6,newphy *new phystop
+    
+    move.w    #$FFFF,-(a7) *resol. stay
+    movea.l    a6,a5
+    suba.l    #$8000,a5 *better way
+    move.l    a5,-(a7)
+    move.l    a5,-(a7)
+    move.w    #5,-(a7)
+    trap    #14
+    lea    $C(a7),a7
+    
+    pea    instm(pc) *Install message
+    move.w    #9,-(a7)
+    trap    #1
+    addq.w    #6,a7
+    
+    move.l newphy(pc),-(sp)
+    move.l selpoint(pc),a2
+    move.l 18(a2),d2  *selected TOS's length
+    move.l d2,-(sp)
+    move.w    handl(pc),-(a7)
+    move.w    #$3F,-(a7)
+    trap    #1
+    lea    $C(a7),a7
 
-	move.l selpoint(pc),a2
-	move.l 18(a2),d2  *selected TOS's length
+    move.l selpoint(pc),a2
+    move.l 18(a2),d2  *selected TOS's length
 
-	cmp.l	d2,d0
-	bne	suerr *load error
+    cmp.l    d2,d0
+    bne    suerr *load error
 
-	move.w	handl(pc),-(a7)
-	move.w	#$3E,-(a7) *fclose
-	trap	#1
-	addq.w	#4,a7
+    move.w    handl(pc),-(a7)
+    move.w    #$3E,-(a7) *fclose
+    trap    #1
+    addq.w    #4,a7
 
   move.l newphy(pc),d0
   move.l d0,a6
 
-	
-	move.l 	a6,$42e.w *now change phystop
-	
-	pea	relom(pc) *relocating message
-	move.w	#9,-(a7)
-	trap	#1
-	addq.w	#6,a7
-	
-	move.l 	a6,d2
-	swap 	d2
-	move.l 	selpoint(pc),a2
-	move.w 	14(a2),d3  *selected TOS's base high word
- 	move.w 	16(a2),d4  *end address high word
- 	move.l 	18(a2),d5 *length
-	
-	sub.w 	d3,d2 *phystop is always on round adress
-	
+    
+    move.l a6,$42e.w *now change phystop
+    
+    pea    relom(pc) *relocating message
+    move.w    #9,-(a7)
+    trap    #1
+    addq.w    #6,a7
+    
+    move.l a6,d2
+    swap d2
+    move.l selpoint(pc),a2
+    move.w 14(a2),d3  *selected TOS's base high word
+     move.w 16(a2),d4  *end address high word
+     move.l 18(a2),d5 *length
+    
+    sub.w d3,d2 *phystop is always on round adress
+    
 
-	move.l 	a6,a5
-        	move.l 	a6,a4
-	add.l 	d5,a5 *end adr.
+    move.l a6,a5
+        move.l a6,a4
+    add.l d5,a5 *end adr.
 
-	move.l 	22(a2),a1 *don't reloc table
-    	moveq   	#0,d0
-	
-reloc	move.w	(a6),d1
-	cmp.w	d3,d1
-	blt.s	notrom
-	cmp.w	d4,d1
-	bge.s	notrom
-	cmp.l	(a1),d0 *no reloc if equ !
-	beq.s	advnonr
-	add.w	d2,d1
-	move.w	d1,(a6)
-	addq.l	#2,a6
-	addq.l  #2,d0
-notrom	addq.l	#2,a6
+    move.l 22(a2),a1 *don't reloc table
+        moveq   #0,d0
+    
+reloc    move.w    (a6),d1
+    cmp.w    d3,d1
+    blt.s    notrom
+    cmp.w    d4,d1
+    bge.s    notrom
+    cmp.l    (a1),d0 *no reloc if equ !
+    beq.s    advnonr
+    add.w    d2,d1
+    move.w    d1,(a6)
+    addq.l    #2,a6
+    addq.l  #2,d0
+notrom    addq.l    #2,a6
         addq.l  #2,d0
-	cmp.l	a5,a6
-	blt.s	reloc
+    cmp.l    a5,a6
+    blt.s    reloc
 
-	move.l	28(a2),$3F8.w  *sign of install version 'T100 - T206'
-	move.l	a4,$3FC.w
-	
-*Ensure restart of new TOS after reset with button (backside)	
-	move.l #$31415926,$426.w
-	
-	move.w 26(a2),d2  *reset entry offset
-	ext.l d2
-	move.l a4,a5
-	add.l d2,a5 *point after resvector
-	move.l a5,$42a.w
+    move.l    28(a2),$3F8.w  *sign of install version 'T100 - T206'
+    move.l    a4,$3FC.w
+    
+*Ensure restart of new TOS after reset with button (backside)    
+    move.l #$31415926,$426.w
+    
+    move.w 26(a2),d2  *reset entry offset
+    ext.l d2
+    move.l a4,a5
+    add.l d2,a5 *point after resvector
+    move.l a5,$42a.w
         move.l #$5555aaaa,$51a.w *This is due TOS 1.00 !
-	
-	jmp	(a4) *reset via ramtos!
-	
-advnonr	addq.l	#4,a1
-	bra.s	notrom
+    
+    jmp    (a4) *reset via ramtos!
+    
+advnonr    addq.l    #4,a1
+    bra.s    notrom
 
 suerr   lea loaderrt(pc),a0
    bsr pmess
@@ -234,15 +234,15 @@ suerr   lea loaderrt(pc),a0
 suexit **********
 
 
-	move.w	#$20,-(a7)
-	trap	#1
-	addq.w	#6,a7
+    move.w    #$20,-(a7)
+    trap    #1
+    addq.w    #6,a7
 
 
-keywait	bsr.s input
+keywait    bsr.s input
 
-apex	pea	$4C0000
-	trap	#1
+apex    pea    $4C0000
+    trap    #1
 
 
 
@@ -253,17 +253,17 @@ unsupi lea unsupm(pc),a0
   bra.s prim
 
 *image not found
-notosf	lea	imnfm(pc),a0
+notosf    lea    imnfm(pc),a0
 
-prim 	bsr.s pmess
-  	bra.s keywait
+prim     bsr.s pmess
+      bra.s keywait
 
 pmess
-	pea	(a0)
-	move.w	#9,-(a7)
-	trap	#1
-	addq.w	#6,a7
-  	rts
+    pea    (a0)
+    move.w    #9,-(a7)
+    trap    #1
+    addq.w    #6,a7
+      rts
 
 input    move.w #1,-(sp)
         trap #1
@@ -285,32 +285,32 @@ loadh
    
  
  
-        clr.w error
-        clr.w   -(sp)
-	pea	fnam(pc)
-	move.w	#$3D,-(sp) *fopen
-	trap	#1
-	addq.w	#8,sp
-	
-	move.w	d0,handl *handle
-	bmi.s	tosimnf *TOS.IMG not found
-	
-	
-	
-	pea stack(pc)
-	pea 32.w
-	move.w	handl(pc),-(a7)
-	move.w	#$3F,-(a7)
-	trap	#1
-	lea	$C(a7),a7
+    clr.w error
+    clr.w   -(sp)
+    pea    fnam(pc)
+    move.w    #$3D,-(sp) *fopen
+    trap    #1
+    addq.w    #8,sp
+    
+    move.w    d0,handl *handle
+    bmi.s    tosimnf *TOS.IMG not found
+    
+    
+    
+    pea stack(pc)
+    pea 32.w
+    move.w    handl(pc),-(a7)
+    move.w    #$3F,-(a7)
+    trap    #1
+    lea    $C(a7),a7
 
-	cmp.l	#32,d0
-	bne.s	hloaderr *load error
+    cmp.l    #32,d0
+    bne.s    hloaderr *load error
 
-	move.w	handl(pc),-(a7)
-	move.w	#$3E,-(a7) *fclose
-	trap	#1
-	addq.w	#4,a7
+    move.w    handl(pc),-(a7)
+    move.w    #$3E,-(a7) *fclose
+    trap    #1
+    addq.w    #4,a7
   
         moveq #0,d0
         rts
@@ -321,7 +321,7 @@ tosimnf moveq #1,d0
 hloaderr  moveq #2,d0
   rts          
   
-  	
+      
  
 lookv *see which version is
 
@@ -426,39 +426,39 @@ issw206
 ispat2    
  
  
-        	clr.w 	error
-        	clr.w   	-(sp)
-	pea	fnam(pc)
-	move.w	#$3D,-(sp) *fopen
-	trap	#1
-	addq.w	#8,sp
-	
-	move.w	d0,handl *handle
-	bmi.s	ferr2 *TOS.IMG not found
-	
-	
-	clr.w -(sp)
-	move.w	handl(pc),-(a7)
-        	pea 	$1e956
-	move.w	#$42,-(a7)    *Fseek
-	trap	#1
-	lea	$a(a7),a7
+  clr.w error
+  clr.w   -(sp)
+    pea    fnam(pc)
+    move.w    #$3D,-(sp) *fopen
+    trap    #1
+    addq.w    #8,sp
+    
+    move.w    d0,handl *handle
+    bmi.s    ferr2 *TOS.IMG not found
+    
+    
+    clr.w -(sp)
+    move.w    handl(pc),-(a7)
+        pea $1e956
+    move.w    #$42,-(a7)    *Fseek
+    trap    #1
+    lea    $a(a7),a7
 
-	
-	pea stack(pc)
-	pea 2.w
-	move.w	handl(pc),-(a7)
-	move.w	#$3F,-(a7)
-	trap	#1
-	lea	$C(a7),a7
+    
+    pea stack(pc)
+    pea 2.w
+    move.w    handl(pc),-(a7)
+    move.w    #$3F,-(a7)
+    trap    #1
+    lea    $C(a7),a7
 
-	cmp.l	#2,d0
-	bne.s	ferr2 *load error
+    cmp.l    #2,d0
+    bne.s    ferr2 *load error
 
-	move.w	handl(pc),-(a7)
-	move.w	#$3E,-(a7) *fclose
-	trap	#1
-	addq.w	#4,a7
+    move.w    handl(pc),-(a7)
+    move.w    #$3E,-(a7) *fclose
+    trap    #1
+    addq.w    #4,a7
   
         
         cmp.w #$00e0,stack *is patched
@@ -501,7 +501,7 @@ cmess lea founc(pc),a2
 
 newphy ds.l 1
 
-handl	dc.w	0 *place for handle
+handl    dc.w    0 *place for handle
 
 *Title message
 titmes dc.b 13,10,'TOS loader by P. Putnik',0
@@ -522,27 +522,27 @@ t10m  dc.b 'TOS 1.04 German',0
 t11m  dc.b 'TOS 2.06 Swedish',0
 
 *Image file name
-fnam	DC.B	'RTOS.IMG',0
+fnam    DC.B    'RTOS.IMG',0
 
 
 loaderrt dc.b 13,10,'Error by loading!',0
 
-	
-anywam	dc.b 13,10,'One ROM-TOS already installed.'
+    
+anywam    dc.b 13,10,'One ROM-TOS already installed.'
   dc.b 13,10,'Load anyway ? ',0
 
 *Install message
-instm	
- 	dc.b 13,10,'Loading...',0
+instm    
+     dc.b 13,10,'Loading...',0
 
 
 *Relocating message
-relom	DC.B  13,' Relocating...',0
+relom    DC.B  13,' Relocating...',0
 
 
-	
-*image not found message	
-imnfm	dc.b 13,10,'ROM-TOS image not found.',0
+    
+*image not found message    
+imnfm    dc.b 13,10,'ROM-TOS image not found.',0
 
 unsupm dc.b 13,10,'Unsupported (TOS) image file.',0
 
@@ -658,154 +658,154 @@ nam11  ds.b 14
 
 
 
-*relocating table- this are adresses witch are not for reloc!	
+*relocating table- this are adresses witch are not for reloc!    
 ;German TOS 1.00
-nonr1 	dc.l $17c8,$17d8,$252e,$2566
-	dc.l $28e6,$2b9a,$85ba,$a8c8
-	dc.l $fbea,$126d2,$1347e,$135ba,$13bb6
-	dc.l $13d6c,$14616,$14716,$207dc
-	dc.l $20800,$20d3e,$2afbc,$2afc2
-	dc.l $2afca,$2be14,0 	
-	
+nonr1     dc.l $17c8,$17d8,$252e,$2566
+    dc.l $28e6,$2b9a,$85ba,$a8c8
+    dc.l $fbea,$126d2,$1347e,$135ba,$13bb6
+    dc.l $13d6c,$14616,$14716,$207dc
+    dc.l $20800,$20d3e,$2afbc,$2afc2
+    dc.l $2afca,$2be14,0     
+    
 ;UK TOS 1.04
-nonr2	DC.L $117E,$1514,$3BAC,$3E04
-	DC.L $3EB2,$55AE,$610C,$8594
-	DC.L $88B4,$15C1C,$170D4,$17426
-	DC.L $18406,$1ABC2,$251E8,$27298
-	DC.L $28898,$29644,$29780,$29B20
-	DC.L $29CD6,$2A580,$2A680,0 *23 ENTRY 
-	
+nonr2    DC.L $117E,$1514,$3BAC,$3E04
+    DC.L $3EB2,$55AE,$610C,$8594
+    DC.L $88B4,$15C1C,$170D4,$17426
+    DC.L $18406,$1ABC2,$251E8,$27298
+    DC.L $28898,$29644,$29780,$29B20
+    DC.L $29CD6,$2A580,$2A680,0 *23 ENTRY 
+    
 ;German TOS 2.06
-nonr3	DC.L	$89A,$13D0
-	DC.L	$1BCA,$1D3A
-	DC.L	$1D3E,$1DF0
-	DC.L	$1DF6,$229C
-	DC.L	$622C,$6BD0
-	DC.L	$8DA8,$8DCA
-	DC.L	$106C0,$13316
-	DC.L	$15840,$17B4A
-	DC.L	$18C5C,$190FC
-	DC.L	$19274,$19D64
-	DC.L	$1A96A,$1B244
-	DC.L	$1C3FC,$1CA64
-	DC.L	$1CCCA,$1CD98
-	DC.L	$1CFBE,$1D82A
-	DC.L	$20854,$21210
-	DC.L	$22BDC,$22BF8
-	DC.L	$2416E,$265B8
-	DC.L	$266A6,$27248
-	DC.L	$2AA0C,$2B042
-	DC.L	$2B802,$2B82A
-	DC.L	$2BA18,$32842
-	DC.L	$33598,$351C0
-	DC.L	$3A2E2,$3A47C
-	DC.L	$3A60A,$3A60E
-	DC.L	$3B6CE,0
+nonr3    DC.L    $89A,$13D0
+    DC.L    $1BCA,$1D3A
+    DC.L    $1D3E,$1DF0
+    DC.L    $1DF6,$229C
+    DC.L    $622C,$6BD0
+    DC.L    $8DA8,$8DCA
+    DC.L    $106C0,$13316
+    DC.L    $15840,$17B4A
+    DC.L    $18C5C,$190FC
+    DC.L    $19274,$19D64
+    DC.L    $1A96A,$1B244
+    DC.L    $1C3FC,$1CA64
+    DC.L    $1CCCA,$1CD98
+    DC.L    $1CFBE,$1D82A
+    DC.L    $20854,$21210
+    DC.L    $22BDC,$22BF8
+    DC.L    $2416E,$265B8
+    DC.L    $266A6,$27248
+    DC.L    $2AA0C,$2B042
+    DC.L    $2B802,$2B82A
+    DC.L    $2BA18,$32842
+    DC.L    $33598,$351C0
+    DC.L    $3A2E2,$3A47C
+    DC.L    $3A60A,$3A60E
+    DC.L    $3B6CE,0
 
-	
-	
-;UK and US TOS 2.06	
-nonr4	DC.L	$89A,$13D0
-	DC.L	$1BCA,$1D3A
-	DC.L	$1D3E,$1DF0
-	DC.L	$1DF6,$229C
-	DC.L	$61D2,$6B76
-	DC.L	$8D4E,$8D70
-	DC.L	$10666,$132BC
-	DC.L	$157E6,$17AF0
-	DC.L	$18C02,$190A2
-	DC.L	$1921A,$19D0A
-	DC.L	$1A910,$1B1EA
-	DC.L	$1C3A2,$1CA0A
-	DC.L	$1CC70,$1CD3E
-	DC.L	$1CF64,$1D7D0
-	DC.L	$207FA,$211B6
-	DC.L	$22B82,$22B9E
-	DC.L	$24114,$264B6 ;new entry
-	DC.L    $26590,$265B8
-	DC.L    $271EE,$2A9B2
-	DC.L    $2AFE8
-	DC.L	$2B7AC,$2B7D8
-	DC.L	$32812
-	DC.L	$33568,$35190
-	DC.L	$3A0A0 ;new entry
-	DC.L    $3A23A,$3A3C8
-	DC.L	$3A3CC,0 ;48 address
-	
-	
-	
-	
-;UK 'Super' TOS 2.06	
-nonr5	DC.L	$89A,$13D0
-	DC.L	$1BCA,$1D3A
-	DC.L	$1D3E,$1DF0
-	DC.L	$1DF6,$229C
-	DC.L	$61D2,$6B76
-	DC.L	$8D4E,$8D70
-	DC.L	$10666,$132BC
-	DC.L	$157E6,$17AF0
-	DC.L	$18C02,$190A2
-	DC.L	$1921A,$19D0A
-	DC.L	$1A910,$1B1EA
-	DC.L	$1C3A2,$1CA0A
-	DC.L	$1CC70,$1CD3E
-	DC.L	$1CF64,$1E1AA
-	DC.L    $1E956
-	DC.L	$207FA,$211B6
-	DC.L	$22B82,$22B9E
-	DC.L	$24114,$264B6
-	dc.l	$26590,$265B8
-	DC.L    $271EE,$2AFE8
-	DC.L	$2B7AC,$2B7D8
-	DC.L	$32812
-	DC.L	$33568,$35190
-	DC.L	$3A0A0,$3A23A
-	DC.L 	$3A3C8,$3A3CC,0 ;48 entry
+    
+    
+;UK and US TOS 2.06    
+nonr4    DC.L    $89A,$13D0
+    DC.L    $1BCA,$1D3A
+    DC.L    $1D3E,$1DF0
+    DC.L    $1DF6,$229C
+    DC.L    $61D2,$6B76
+    DC.L    $8D4E,$8D70
+    DC.L    $10666,$132BC
+    DC.L    $157E6,$17AF0
+    DC.L    $18C02,$190A2
+    DC.L    $1921A,$19D0A
+    DC.L    $1A910,$1B1EA
+    DC.L    $1C3A2,$1CA0A
+    DC.L    $1CC70,$1CD3E
+    DC.L    $1CF64,$1D7D0
+    DC.L    $207FA,$211B6
+    DC.L    $22B82,$22B9E
+    DC.L    $24114,$264B6 ;new entry
+    DC.L    $26590,$265B8
+    DC.L    $271EE,$2A9B2
+    DC.L    $2AFE8
+    DC.L    $2B7AC,$2B7D8
+    DC.L    $32812
+    DC.L    $33568,$35190
+    DC.L    $3A0A0 ;new entry
+    DC.L    $3A23A,$3A3C8
+    DC.L    $3A3CC,0 ;48 address
+    
+    
+    
+    
+;UK 'Super' TOS 2.06    
+nonr5    DC.L    $89A,$13D0
+    DC.L    $1BCA,$1D3A
+    DC.L    $1D3E,$1DF0
+    DC.L    $1DF6,$229C
+    DC.L    $61D2,$6B76
+    DC.L    $8D4E,$8D70
+    DC.L    $10666,$132BC
+    DC.L    $157E6,$17AF0
+    DC.L    $18C02,$190A2
+    DC.L    $1921A,$19D0A
+    DC.L    $1A910,$1B1EA
+    DC.L    $1C3A2,$1CA0A
+    DC.L    $1CC70,$1CD3E
+    DC.L    $1CF64,$1E1AA
+    DC.L    $1E956
+    DC.L    $207FA,$211B6
+    DC.L    $22B82,$22B9E
+    DC.L    $24114,$264B6
+    dc.l    $26590,$265B8
+    DC.L    $271EE,$2AFE8
+    DC.L    $2B7AC,$2B7D8
+    DC.L    $32812
+    DC.L    $33568,$35190
+    DC.L    $3A0A0,$3A23A
+    DC.L     $3A3C8,$3A3CC,0 ;48 entry
 
 ;UK and US TOS 1.00
-nonr6 	dc.l $17c8,$17d8,$252e,$2566
-	dc.l $28e6,$2b40,$8560,$a86e
-	dc.l $fb90,$12678,$13424,$13560,$13b5c
-	dc.l $13d12,$145bc,$146bc,$20b1a
-	dc.l $20b3e,$2107c,$2b308,$2b30e
-	dc.l $2b316,$2c160,0 	
+nonr6     dc.l $17c8,$17d8,$252e,$2566
+    dc.l $28e6,$2b40,$8560,$a86e
+    dc.l $fb90,$12678,$13424,$13560,$13b5c
+    dc.l $13d12,$145bc,$146bc,$20b1a
+    dc.l $20b3e,$2107c,$2b308,$2b30e
+    dc.l $2b316,$2c160,0     
 
 ;German TOS 1.04
-nonr7	DC.L $117E,$1514,$3A4C
-	DC.L $3F0C,$5608,$6166,$85EE
-	DC.L $890E,$15C76,$1712E,$17480
-	DC.L $18438,$1ABF4,$2521A,$272CA
-	DC.L $288CA,$29676,$297B2,$29B52
-	DC.L $29D08,$2A5B2,$2A6B2,$2EC00,0 *23 ENTRY 
+nonr7    DC.L $117E,$1514,$3A4C
+    DC.L $3F0C,$5608,$6166,$85EE
+    DC.L $890E,$15C76,$1712E,$17480
+    DC.L $18438,$1ABF4,$2521A,$272CA
+    DC.L $288CA,$29676,$297B2,$29B52
+    DC.L $29D08,$2A5B2,$2A6B2,$2EC00,0 *23 ENTRY 
 
 
 ;Swedish TOS 2.06
 nonr8 
-	DC.L	$89A,$13D0
-	DC.L	$1BCA,$1D3A
-	DC.L	$1D3E,$1DF0
-	DC.L	$1DF6,$229C
-	DC.L	$624A,$6BEE
-	DC.L	$8DC6,$8DE8
-	DC.L	$106DE,$13334
-	DC.L	$1585E,$17B68
-	DC.L	$18C7A,$1911A
-	DC.L	$19292,$19D82
-	DC.L	$1A988,$1B262
-	DC.L	$1C41A,$1CA82
-	DC.L	$1CCE8,$1CDB6
-	DC.L	$1CFDC,$1D848
-	DC.L	$20872,$2122E
-	DC.L	$22BFA,$22C16
-	DC.L	$2418C,$265D6
-	DC.L	$266C4,$27266
-	DC.L	$2AA2A,$2B060
-	DC.L	$2B824,$2B850
-	DC.L	$32860
-	DC.L	$335B6,$351DE
-	DC.L	$3A364,$3A4FE
-	DC.L	$3A68C,$3A690
-	DC.L	$3B750,0
+    DC.L    $89A,$13D0
+    DC.L    $1BCA,$1D3A
+    DC.L    $1D3E,$1DF0
+    DC.L    $1DF6,$229C
+    DC.L    $624A,$6BEE
+    DC.L    $8DC6,$8DE8
+    DC.L    $106DE,$13334
+    DC.L    $1585E,$17B68
+    DC.L    $18C7A,$1911A
+    DC.L    $19292,$19D82
+    DC.L    $1A988,$1B262
+    DC.L    $1C41A,$1CA82
+    DC.L    $1CCE8,$1CDB6
+    DC.L    $1CFDC,$1D848
+    DC.L    $20872,$2122E
+    DC.L    $22BFA,$22C16
+    DC.L    $2418C,$265D6
+    DC.L    $266C4,$27266
+    DC.L    $2AA2A,$2B060
+    DC.L    $2B824,$2B850
+    DC.L    $32860
+    DC.L    $335B6,$351DE
+    DC.L    $3A364,$3A4FE
+    DC.L    $3A68C,$3A690
+    DC.L    $3B750,0
 
 
 
