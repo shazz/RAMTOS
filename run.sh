@@ -10,6 +10,7 @@ rm -rf bin/*
 mkdir -p bin
 cp -r TOS bin/
 cp TOS/TOS206FR.IMG bin/RTOS.IMG
+cp TOS/TOS206SW.IMG bin/
 cp build/*.PRG bin/
 cp -r tests/* bin/
 cd /d/projects/stvirus/tools/hatari 
