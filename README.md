@@ -7,7 +7,7 @@ Please refer to this [page](https://atari.8bitchip.info/astopensw.php) for more 
 
 This branch is adding:
 - Support TOS 2.06 FR
-- Singlecleaned source code file for `RAMTOS`, `RAMTOSB` and `SELTOS`
+- Single cleaned source code file for `RAMTOS`, `RAMTOSB` and `SELTOS` (using devpac defines)
 - Removed CRC check for all supported TOS 2.06
 - Python tool to identify potential non-reloc addresses
 - MEMTOP patch
