@@ -5,8 +5,12 @@
 RAMTOS and SELTOS are written by Pera Putnik and available as free and open source software. 
 Please refer to this [page](https://atari.8bitchip.info/astopensw.php) for more information.
 
-This branch is adding support for:
-- TOS 2.06 FR
+This branch is adding:
+- support TOS 2.06 FR
+- Single source code file for RAMTOS, RAMTOSB and SELTOS
+- Removed CRC check for all supported TOS 2.06
+- Python tool to identify potential non-reloc addresses
+- MEMTOP patch
 
 ### Prerequisites
 
