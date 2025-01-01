@@ -965,8 +965,8 @@ param3_tos206de:
     dc.l    non_rel_tos206de
     dc.w    $7e
     dc.l    $54323036
-    dc.w    0
-    dc.w    0
+    dc.w    $7fa
+    dc.w    $98
 
 ;UK 2.06
 param4_tos206uk:
@@ -976,8 +976,8 @@ param4_tos206uk:
     dc.l    non_rel_tos206us_uk
     dc.w    $7e
     dc.l    $54323036
-    dc.w    0
-    dc.w    0
+    dc.w    $7fa
+    dc.w    $98
 
 ;UK supertos 2.06
 param5_tos206uk_super
@@ -987,9 +987,8 @@ param5_tos206uk_super
     dc.l    non_rel_tos206uk_super
     dc.w    $7e
     dc.l    $54323036
-    dc.w    0
-    dc.w    0
-
+    dc.w    $7fa
+    dc.w    $98
 ;US 2.06
 param6_tos206us
     ds.b    14
@@ -998,8 +997,8 @@ param6_tos206us
     dc.l    non_rel_tos206us_uk  ;same as UK TOS 2.06
     dc.w    $7e
     dc.l    $54323036
-    dc.w    0
-    dc.w    0
+    dc.w    $7fa
+    dc.w    $98
 
 ;US 1.04
 param7_tos104us
@@ -1053,8 +1052,8 @@ param11_tos206sw:
     dc.l    non_rel_tos206sw
     dc.w    $7e
     dc.l    $54323036
-    dc.w    0
-    dc.w    0
+    dc.w    $7fa
+    dc.w    $98
 
 ;French 2.06
 param12_tos206fr
