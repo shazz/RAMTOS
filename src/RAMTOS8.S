@@ -65,7 +65,7 @@ PARAM_NON_RELOC_ADDR_FIELD      equ 22
 PARAM_RESVEC_OFFSET_FIELD       equ 26
 PARAM_INSTALL_SIGN_FIELD        equ 28
 PARAM_CRC_START_OFFSET_FIELD    equ 32
-PARAM_CRC_END_OFFSET_FIELD        equ 34
+PARAM_CRC_END_OFFSET_FIELD      equ 34
 
 ; ---------------------------------------------------------------
 ; Main program
@@ -322,6 +322,7 @@ anyway:
 
 	bsr     get_input_key
 	bclr    #5,d0                       ; upper case
+
 	cmp.b   #'Y',d0
 	beq.s   load_tos_image
 
@@ -423,30 +424,30 @@ load_tos_image:
     moveq   #0, d0
 
 ; ---------------------------------------------------------------
-; reloc
+; reloc all ROM addresses except no-reloc addresses
 ; ---------------------------------------------------------------
-reloc:
+reloc_loop:
     move.w  (a6), d1
 
     cmp.w   d3, d1
-    blt.s   notrom
+    blt.s   not_in_rom
 
     cmp.w   d4, d1
-    bge.s   notrom
+    bge.s   not_in_rom
 
-    cmp.l   (a1), d0                    ; no reloc if equ !
-    beq.s   advnonr
+    cmp.l   (a1), d0                    ; no reloc if equals !
+    beq.s   skip_not_relocated
 
     add.w   d2, d1
     move.w  d1, (a6)
     addq.l  #2, a6
     addq.l  #2, d0
 
-notrom:
+not_in_rom:
     addq.l  #2, a6
     addq.l  #2, d0
     cmp.l   a5, a6
-    blt.s   reloc
+    blt.s   reloc_loop
 
     ; sign of install version 'check_de_100 - check_de_206'
     move.l  PARAM_INSTALL_SIGN_FIELD(a2), $3F8.w 
@@ -481,9 +482,9 @@ notrom:
 .no_crc:
     jmp     (a4)                        ; reset via ramtos!
 
-advnonr:
+skip_not_relocated:
     addq.l  #4, a1
-    bra.s   notrom
+    bra.s   not_in_rom
 
 load_error:
     lea     load_err_message(pc), a0
@@ -573,7 +574,7 @@ load_rom:
     addq.w  #8, sp
 
     move.w  d0, handle                  ; handle
-    bmi.s   tosimnf                     ; TOS.IMG not found
+    bmi.s   tos_img_not_found           ; TOS.IMG not found
 
     pea     stack(pc)
     pea     32.w
@@ -583,7 +584,7 @@ load_rom:
     lea     $C(sp), sp
 
     cmp.l   #32, d0
-    bne.s   hloaderr                    ; load error
+    bne.s   tos_load_error              ; load error
 
     move.w  handle(pc), -(sp)
     move.w  #$3E, -(sp)                 ; fclose
@@ -594,16 +595,16 @@ load_rom:
     rts
 
 ; ---------------------------------------------------------------
-; tosimnf 
+; tos_img_not_found 
 ; ---------------------------------------------------------------
-tosimnf:
+tos_img_not_found:
     moveq   #1, d0
     rts
 
 ; ---------------------------------------------------------------
-; hloaderr 
+; tos_load_error 
 ; ---------------------------------------------------------------
-hloaderr:
+tos_load_error:
     moveq   #2, d0
     rts
 
@@ -700,18 +701,19 @@ check_de_104:
 ; TOS 2.06
 ; ---------------------------------------------------------------
 check_de_206:
-    cmp.w   #3, $1c(a1)                 ;is German
-    bne.s   check_us_206
+    cmp.w   #3, $1c(a1)                 ; is German
+    bne.s   check_patched_tos
 
     lea     t3m(pc), a0
     bsr     show_found_TOS_msg
     moveq   #3, d0
     rts
 
-check_us_206:
+check_patched_tos:
     cmp.w   #7, $1c(a1)                 ; shouldn't be 00 00 ?
-    beq.s   ispat2
+    beq.s   check_patchs
 
+check_us_206:
     ;Is US TOS 2.06
     cmp.w   #0, $1c(a1)
     bne.s   check_sw_206
@@ -741,12 +743,10 @@ check_fr_206:
     moveq   #12, d0
     rts
 
-;further test needed for patched version
-
 ; ---------------------------------------------------------------
-;
+; Further test needed for patched version
 ; ---------------------------------------------------------------
-ispat2
+check_patchs:
     ifeq _RAMTOS_
     move.l  DTA(pc), d1
     move.l  d1, a1
@@ -860,11 +860,13 @@ insert_filename:
 ; Messages
 ; -------------------------------------------------------------
 title_message:
-    dc.b    13, 10, 'RAMTOS v8 by P. Putnik & Shazz', 0
+    dc.b    $0d,$0a, 'RAMTOS/SELTOS v8 by P. Putnik & Shazz',$0d,$0a,0
+
 search_message:
-    dc.b    13, 10, 'Searching ROM-TOS images...', 0
+    dc.b    $0d,$0a, 'Searching ROM-TOS images... ', 0
+
 found_message:
-    dc.b    13, 10, 'Found:', 0
+    dc.b    'found:', 0
 
 t1m:    dc.b 'TOS 1.00 German', 0
 t2m     dc.b 'TOS 1.04 UK', 0
@@ -888,30 +890,30 @@ filename:
     endc
 
 load_err_message:
-    dc.b    13, 10, 'Error while loading!', 0
+    dc.b    $0d,$0a, 'Error while loading!', 0
 
 anyway_message:
-    dc.b    13, 10, 'RAMTOS already installed.'
-    dc.b    13, 10, 'Load anyway ? ', 0
+    dc.b    $0d,$0a, 'RAMTOS already installed.'
+    dc.b    $0d,$0a, 'Load anyway ? ', 0
 
 ;Install message
 loading_message:
-    dc.b    13, 10, 'Loading...', 0
+    dc.b    $0d,$0a, 'Loading...', 0
 
 ;Relocating message
 relocating_message:
-    dc.b    13, ' Relocating...', 0
+    dc.b    $0d,$0a, ' Relocating...', 0
 
 ;image not found message
 not_found_message:
-    dc.b    13, 10, 'TOS image not found.', 0
+    dc.b    $0d,$0a, 'TOS image not found.', 0
 
 unsupported_message:
-    dc.b    13, 10, 'Unsupported TOS image file.', 0
+    dc.b    $0d,$0a, 'Unsupported TOS image file.', 0
 
     ifeq _RAMTOS_
 selection_message:
-    dc.b    13, 10, 13, 10, 'select TOS to install  1-'
+    dc.b    $0d,$0a,$0d,$0a, 'select TOS to install  1-'
 selection2_message:
     dc.b    '1:', 0
     endc
