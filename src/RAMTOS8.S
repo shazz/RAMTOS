@@ -1,11 +1,11 @@
 
-; TOS  Ram loader
-; Version for direct load at  27. July 2006.
+; TOS Ram loader
+; Version for direct load at 27. July 2006.
 ; Added support for Swedish TOS 2.06 on March 9 2008.
-; Cleaning and added support for French TOS 2.06 by Shazz / MJJ Prod - 12/2024
-
-; load  file immed.
 ; P. Putnik
+
+; Cleaning, added support for French TOS 2.06 by Shazz / MJJ Prod - 12/2024
+; TOS 2.06 patched to remove CRC ROM check by Shazz / MJJ Prod - 01/2025
 
 ; Recognises TOS 1.00 German,  US & (UK- ?? not tested)
 ; TOS 1.04 US & UK & German
@@ -39,8 +39,14 @@
 ; ---------------------------------------------------------------
 ; Constants
 ; ---------------------------------------------------------------
-MAX_FILES        equ 9
-NOT_SUPPORTED    equ 13
+
+RESVALID                        equ $426                ; $000426|long |Validates resvector if $31415926                        |resvalid
+RESVECTOR                       equ $42A                ; $00042A|long |Reset vector                                            |resvector
+PHYSTOP                         equ $42E                ; $00042E|long |Physical top of RAM 0x100000 on 1MB ST                  |phystop
+
+MAX_FILES                       equ 9
+NOT_SUPPORTED                   equ 13
+RESVECTOR_MAGIC                 equ $31415926           ; magic number to setup the reset vector
 
 ; ---------------------------------------------------------------
 ; Main program
@@ -92,7 +98,7 @@ begin:
 ;
 ; ---------------------------------------------------------------
 gotext:
-    lea     -30(a3), a3  ;precompens. offset
+    lea     -30(a3), a3                 ;precompens. offset
     move.l  a3, DTA
 
     bsr     load_rom
@@ -113,7 +119,7 @@ which2:
     lea     found_message(pc), a0
     bsr     show_message
 
-    bsr     find_version           ; d0 will contain the entry number
+    bsr     find_version                ; d0 will contain the entry number
     cmp.w   #NOT_SUPPORTED, d0
     beq     show_unsupported_msg
 
@@ -122,7 +128,7 @@ which2:
     bsr     insert_filename
     move.l  (sp)+, d0
 
-    bra     get_params              ; to load...
+    bra     get_params                  ; to load...
     endc
 
 ; ---------------------------------------------------------------
@@ -138,7 +144,7 @@ search_tos_images:
     addq.l  #6, sp
 
     tst.b   is_installed
-    bne     quit                    ;quit silently if already installed
+    bne     quit                        ; quit silently if already installed
     endc
 
     lea     search_message(pc), a0
@@ -197,12 +203,12 @@ which:
 
     bsr     find_version
     cmp.w   #NOT_SUPPORTED, d0
-    beq     show_unsupported_msg ;instead show_image_not_found_msg
+    beq     show_unsupported_msg        ;instead show_image_not_found_msg
 
     ifeq _RAMTOS_
     lea     TOS_list(pc), a2
-    move.w  d0, (a2)+  ;put in list
-    move.l  a2, ftosp ;set  pointer
+    move.w  d0, (a2)+                   ;put in list
+    move.l  a2, ftosp                   ;set  pointer
 
     bsr     insert_filename
 
@@ -210,7 +216,7 @@ which:
     move.w  #1, fscount
 
 fsnext:
-    move.w  #79, -(sp)                   ; fsnext
+    move.w  #79, -(sp)                  ; fsnext
     trap    #1
     add.l   #2, sp
 
@@ -266,8 +272,8 @@ select:
 ; d0 = entry number
 ; ---------------------------------------------------------------
 get_params:
-    mulu    #32, d0
-    lea     param1_tos100de-32(pc), a2  ; precompens.
+    mulu    #34, d0
+    lea     param1_tos100de-34(pc), a2  ; precompens.
     add.l   d0, a2                      ; address
 
     move.l  a2, selected_params         ; store it
@@ -292,11 +298,11 @@ anyway:
 	bsr     show_message
 
 	bsr     get_input_key
-	bclr    #5,d0  ;upper case
+	bclr    #5,d0                       ; upper case
 	cmp.b   #'Y',d0
 	beq.s   load_tos_image
 
-	moveq   #0,d0  ;no error sign
+	moveq   #0,d0                       ; no error sign
 	bra     switch_user_mode
     endc
 
@@ -319,31 +325,30 @@ load_tos_image:
     move.w  d0, handle                  ; handle
     bmi     load_error
 
-
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2                  ;selected TOS's length
-    movea.l $42E.w, a6                  ;phystop
+    move.l  18(a2), d2                  ; selected TOS's length
+    movea.l PHYSTOP.w, a6               ; phystop
     suba.l  d2, a6
 
-    move.l  a6, newphy                  ;new phystop
+    move.l  a6, newphy                  ; new phystop
 
-    move.w  #$FFFF, -(sp)               ;resol. stay
+    move.w  #$FFFF, -(sp)               ; resol. stay
     movea.l a6, a5
-    suba.l  #$8000, a5                  ;better way
+    suba.l  #$8000, a5                  ; better way
     move.l  a5, -(sp)
     move.l  a5, -(sp)
     move.w  #5, -(sp)
     trap    #14
     lea     $C(sp), sp
 
-    pea     loading_message(pc)         ;Install message
+    pea     loading_message(pc)         ; install message
     move.w  #9, -(sp)
     trap    #1
     addq.w  #6, sp
 
     move.l  newphy(pc), -(sp)
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2                  ;selected TOS's length
+    move.l  18(a2), d2                  ; selected TOS's length
     move.l  d2, -(sp)
     move.w  handle(pc), -(sp)
     move.w  #$3F, -(sp)
@@ -351,10 +356,10 @@ load_tos_image:
     lea     $C(sp), sp
 
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2                  ;selected TOS's length
+    move.l  18(a2), d2                  ; selected TOS's length
 
     cmp.l   d2, d0
-    bne     load_error                  ;load error
+    bne     load_error                  ; load error
 
     move.w  handle(pc), -(sp)
     move.w  #$3E, -(sp)                 ; fclose
@@ -364,7 +369,7 @@ load_tos_image:
     move.l  newphy(pc), d0
     move.l  d0, a6
 
-    move.l  a6, $42e.w                  ; now change phystop
+    move.l  a6, PHYSTOP.w               ; now change phystop
 
     pea     relocating_message(pc)      ; relocating message
     move.w  #9, -(sp)
@@ -384,44 +389,59 @@ load_tos_image:
     move.l  a6, a4
     add.l   d5, a5                      ; end adr.
 
-    move.l  22(a2), a1                  ; don't reloc table
+    move.l  22(a2), a1                  ; get no-reloc table
     moveq   #0, d0
 
 ; ---------------------------------------------------------------
-;
+; reloc
 ; ---------------------------------------------------------------
 reloc:
     move.w  (a6), d1
+
     cmp.w   d3, d1
     blt.s   notrom
+
     cmp.w   d4, d1
     bge.s   notrom
-    cmp.l   (a1), d0                    ;no reloc if equ !
+
+    cmp.l   (a1), d0                    ; no reloc if equ !
     beq.s   advnonr
+
     add.w   d2, d1
     move.w  d1, (a6)
     addq.l  #2, a6
     addq.l  #2, d0
-notrom
+
+notrom:
     addq.l  #2, a6
     addq.l  #2, d0
     cmp.l   a5, a6
     blt.s   reloc
 
-    move.l  28(a2), $3F8.w              ;sign of install version 'check_de_100 - check_de_206'
+    move.l  28(a2), $3F8.w              ; sign of install version 'check_de_100 - check_de_206'
     move.l  a4, $3FC.w
 
-;   Ensure restart of new TOS after reset with button (backside)
-    move.l  #$31415926, $426.w
+    ; Ensure restart of new TOS after warm reset
+    move.l  #RESVECTOR_MAGIC, RESVALID.w
 
-    move.w  26(a2), d2                  ;reset entry offset
+    move.w  26(a2), d2                  ; reset entry offset
     ext.l   d2
     move.l  a4, a5
-    add.l   d2, a5                      ;point after resvector
-    move.l  a5, $42a.w
-    move.l  #$5555aaaa, $51a.w          ;This is due TOS 1.00 !
+    add.l   d2, a5                      ; point after resvector
+    move.l  a5, RESVECTOR.w
+    move.l  #$5555aaaa, $51a.w          ; This is due TOS 1.00 !
 
-    jmp     (a4)                        ;reset via ramtos!
+    ; patch crc check
+    move.w    32(a2), d0                ; get CRC offset routine start address
+    beq.s     .no_crc                   ; if not 0
+    move.l    a4, a0                    ; apply offset to TOS start
+    adda.w    d0, a0
+    move.w    #$6000, (a0)+             ; patch existing move.l #banksize,d7
+    move.w    #$0098, (a0)+             ; by bra.w crcok and nop
+    move.w    #$4e71, (a0)+             ; ref: https://github.com/th-otto/tos3x/blob/master/bios/startup.S#L1750
+
+.no_crc:
+    jmp     (a4)                        ; reset via ramtos!
 
 advnonr:
     addq.l  #4, a1
@@ -463,6 +483,10 @@ print_and_wait:
 ; Routines
 ; ---------------------------------------------------------------
 
+; ---------------------------------------------------------------
+; show_message
+; a0 = message ptr
+; ---------------------------------------------------------------
 show_message:
     pea     (a0)
     move.w  #9, -(sp)
@@ -470,18 +494,27 @@ show_message:
     addq.w  #6, sp
     rts
 
+; ---------------------------------------------------------------
+; get_input_key
+; ---------------------------------------------------------------
 get_input_key:
     move.w  #1, -(sp)
     trap    #1
     addq.l  #2, sp
     rts
 
-;Detecting is already installed in supervisor
+; ---------------------------------------------------------------
+; check_installed
+; Detecting is already installed in supervisor
+; ---------------------------------------------------------------
 check_installed:
-    cmp.l   #$31415926, $426.w
+    cmp.l   #RESVECTOR_MAGIC, RESVALID.w
     seq     is_installed
     rts
 
+; ---------------------------------------------------------------
+; load_rom
+; ---------------------------------------------------------------
 load_rom:
     ifeq _RAMTOS_
     move.l  DTA(pc), d1
@@ -512,25 +545,34 @@ load_rom:
     lea     $C(sp), sp
 
     cmp.l   #32, d0
-    bne.s   hloaderr ;load error
+    bne.s   hloaderr                    ; load error
 
     move.w  handle(pc), -(sp)
-    move.w  #$3E, -(sp) ;fclose
+    move.w  #$3E, -(sp)                 ; fclose
     trap    #1
     addq.w  #4, sp
 
     moveq   #0, d0
     rts
 
+; ---------------------------------------------------------------
+; tosimnf 
+; ---------------------------------------------------------------
 tosimnf:
     moveq   #1, d0
     rts
 
+; ---------------------------------------------------------------
+; hloaderr 
+; ---------------------------------------------------------------
 hloaderr:
     moveq   #2, d0
     rts
 
- ;see which version is
+; ---------------------------------------------------------------
+; find_version
+; see which version is 
+; ---------------------------------------------------------------
 find_version:
     lea     stack(pc), a1
 
@@ -547,14 +589,14 @@ find_version:
     beq     check_de_206
 
 not_supported:
-    moveq   #NOT_SUPPORTED, d0                     ; not found supported
+    moveq   #NOT_SUPPORTED, d0          ; not found supported
     rts
 
 ; ---------------------------------------------------------------
 ; TOS 1.00
 ; ---------------------------------------------------------------
 check_de_100:
-    cmp.w   #3, $1c(a1) ;is german
+    cmp.w   #3, $1c(a1)                 ; is german
     bne.s   check_uk_100
 
     lea     t1m(pc), a0
@@ -590,7 +632,7 @@ check_fr_102:
 ; TOS 1.04
 ; ---------------------------------------------------------------
 check_uk_104:
-    cmp.w   #7, $1c(a1) ;is English
+    cmp.w   #7, $1c(a1)                 ;is English
     bne.s   check_us_104
 
     lea     t2m(pc), a0
@@ -620,7 +662,7 @@ check_de_104:
 ; TOS 2.06
 ; ---------------------------------------------------------------
 check_de_206:
-    cmp.w   #3, $1c(a1) ;is German
+    cmp.w   #3, $1c(a1)                 ;is German
     bne.s   check_us_206
 
     lea     t3m(pc), a0
@@ -629,7 +671,7 @@ check_de_206:
     rts
 
 check_us_206:
-    cmp.w   #7, $1c(a1)            ; shouldn't be 00 00 ?
+    cmp.w   #7, $1c(a1)                 ; shouldn't be 00 00 ?
     beq.s   ispat2
 
     ;Is US TOS 2.06
@@ -682,18 +724,17 @@ ispat2
     pea     filename(pc)
     endc
 
-    move.w  #$3D, -(sp) ;fopen
+    move.w  #$3D, -(sp)                 ; fopen
     trap    #1
     addq.w  #8, sp
 
-    move.w  d0, handle ;handle
-    bmi.s   on_error ;TOS.IMG not found
-
+    move.w  d0, handle                  ; handle
+    bmi.s   on_error                    ; TOS.IMG not found
 
     clr.w   -(sp)
     move.w  handle(pc), -(sp)
     pea     $1e956
-    move.w  #$42, -(sp)    ;Fseek
+    move.w  #$42, -(sp)                 ; Fseek
     trap    #1
     lea     $a(sp), sp
 
@@ -705,15 +746,14 @@ ispat2
     lea     $C(sp), sp
 
     cmp.l   #2, d0
-    bne.s   on_error ;load error
+    bne.s   on_error                    ; load error
 
     move.w  handle(pc), -(sp)
-    move.w  #$3E, -(sp) ;fclose
+    move.w  #$3E, -(sp)                 ; fclose
     trap    #1
     addq.w  #4, sp
 
-
-    cmp.w   #$00e0, stack ;is patched
+    cmp.w   #$00e0, stack               ; is patched
     beq.s   patched_TOS
 
     lea     t4m(pc), a0
@@ -735,7 +775,7 @@ patched_TOS:
 ;
 ; ---------------------------------------------------------------
 on_error:
-    bra     not_supported  ;for now
+    bra     not_supported               ; for now
 
 ; ---------------------------------------------------------------
 ; show_found_TOS_msg
@@ -764,8 +804,8 @@ show_found_TOS_msg:
 insert_filename:
 
     ext.l   d0
-    mulu    #32, d0
-    lea     param1_tos100de-32(pc), a2
+    mulu    #34, d0
+    lea     param1_tos100de-34(pc), a2
     add.l   d0, a2
     move.l  DTA(pc), a1
     lea     30(a1), a1
@@ -804,9 +844,9 @@ t12m    dc.b 'TOS 2.06 French', 0
 ;Image file name
 filename:
     ifeq _RAMTOS_
-    dc.b    '*.IMG', 0
+    dc.b    "*.IMG", 0
     else
-    dc.b    'RTOS.IMG', 0
+    dc.b    "RTOS.IMG", 0
     endc
 
 load_err_message:
@@ -855,7 +895,7 @@ is_installed:
     dc.w    0                       ; flag, set to 1 if RAMTOS already installed
 
 handle:
-    dc.w    0 ;place for handle
+    dc.w    0           
 
 ; -------------------------------------------------------------
 ; parameter table for each TOS
@@ -865,7 +905,8 @@ handle:
 ; Nonreloc data address - long
 ; Offset after resetvector - word
 ; Install sign - long
-; Total 32 bytes
+; crc check ok offset
+; Total 34 bytes
 ; -------------------------------------------------------------
 
 ;German 1.00
@@ -876,6 +917,7 @@ param1_tos100de:
     dc.l    non_rel_tos100de
     dc.w    $74
     dc.l    $54313030
+    dc.w    0
 
 ;UK 1.04
 param2_tos104uk
@@ -885,6 +927,7 @@ param2_tos104uk
     dc.l    non_rel_tos104uk
     dc.w    $80
     dc.l    $54313034
+    dc.w    0
 
 ;German 2.06
 param3_tos206de:
@@ -894,6 +937,7 @@ param3_tos206de:
     dc.l    non_rel_tos206de
     dc.w    $7e
     dc.l    $54323036
+    dc.w    0
 
 ;UK 2.06
 param4_tos206uk:
@@ -903,6 +947,7 @@ param4_tos206uk:
     dc.l    non_rel_tos206us_uk
     dc.w    $7e
     dc.l    $54323036
+    dc.w    0
 
 ;UK supertos 2.06
 param5_tos206uk_super
@@ -912,6 +957,7 @@ param5_tos206uk_super
     dc.l    non_rel_tos206uk_super
     dc.w    $7e
     dc.l    $54323036
+    dc.w    0
 
 ;US 2.06
 param6_tos206us
@@ -921,6 +967,7 @@ param6_tos206us
     dc.l    non_rel_tos206us_uk  ;same as UK TOS 2.06
     dc.w    $7e
     dc.l    $54323036
+    dc.w    0
 
 ;US 1.04
 param7_tos104us
@@ -930,6 +977,7 @@ param7_tos104us
     dc.l    non_rel_tos104uk  ;same as UK TOS 1.04 ???
     dc.w    $80
     dc.l    $54313034
+    dc.w    0
 
 ;UK 1.00
 param8_tos100uk:
@@ -939,6 +987,7 @@ param8_tos100uk:
     dc.l    non_rel_tos100us_uk
     dc.w    $74
     dc.l    $54313030
+    dc.w    0
 
 ;US 1.00
 param9_tos100us:
@@ -948,6 +997,7 @@ param9_tos100us:
     dc.l    non_rel_tos100us_uk
     dc.w    $74
     dc.l    $54313030
+    dc.w    0
 
 ;German 1.04
 param10_tos104de:
@@ -957,6 +1007,7 @@ param10_tos104de:
     dc.l    non_rel_tos104de
     dc.w    $80
     dc.l    $54313034
+    dc.w    0
 
 ;Swedish 2.06
 param11_tos206sw:
@@ -966,6 +1017,7 @@ param11_tos206sw:
     dc.l    non_rel_tos206sw
     dc.w    $7e
     dc.l    $54323036
+    dc.w    0
 
 ;French 2.06
 param12_tos206fr
@@ -975,6 +1027,7 @@ param12_tos206fr
     dc.l    non_rel_tos206fr   ; Nonreloc data address - long
     dc.w    $7e                ; Offset after resetvector - word
     dc.l    $54323036          ; Install sign - long
+    dc.w    $7fa
 
 ; diff
 ;           US 2.06         SW 2.06             UK 2.06         DE 2.06
@@ -1266,9 +1319,9 @@ non_rel_tos206sw:
     dc.l    $1df6
     dc.l    $229c
     dc.l    $624a
-    dc.l    $6bee ; <-
+    dc.l    $6bee
     dc.l    $8dc6
-    dc.l    $8de8 ; <-
+    dc.l    $8de8
     dc.l    $106de
     dc.l    $13334
     dc.l    $1585e
