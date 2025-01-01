@@ -898,11 +898,11 @@ anyway_message:
 
 ;Install message
 loading_message:
-    dc.b    $0d,$0a, 'Loading...', 0
+    dc.b    $1b,$45, 'Loading... ', 0
 
 ;Relocating message
 relocating_message:
-    dc.b    $0d,$0a, ' Relocating...', 0
+    dc.b   'relocating...', 0
 
 ;image not found message
 not_found_message:
