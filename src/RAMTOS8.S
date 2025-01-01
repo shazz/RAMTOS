@@ -4,8 +4,10 @@
 ; Added support for Swedish TOS 2.06 on March 9 2008.
 ; P. Putnik
 
-; Cleaning, added support for French TOS 2.06 by Shazz / MJJ Prod - 12/2024
-; TOS 2.06 patched to remove CRC ROM check by Shazz / MJJ Prod - 01/2025
+; Cleaning, added support for French TOS 2.06 (12/2024)
+; TOS 2.06 patched to remove CRC ROM check (01/2025)
+; Improved SELTOS key pressed input (01/2025)
+; Shazz / MJJ Prod
 
 ; Recognises TOS 1.00 German,  US & (UK- ?? not tested)
 ; TOS 1.04 US & UK & German
