@@ -11,6 +11,7 @@ This branch is adding:
 - Removed CRC check for all supported TOS 2.06
 - Python tool to identify potential non-reloc addresses
 - MEMTOP patch
+- .ST and .MSA floppy image generation to load TOS from floppy at boot
 
 ### Prerequisites
 
