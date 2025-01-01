@@ -43,10 +43,27 @@
 RESVALID                        equ $426                ; $000426|long |Validates resvector if $31415926                        |resvalid
 RESVECTOR                       equ $42A                ; $00042A|long |Reset vector                                            |resvector
 PHYSTOP                         equ $42E                ; $00042E|long |Physical top of RAM 0x100000 on 1MB ST                  |phystop
+MEMTOP                          equ $436                ; $000436|long |End of TPA (user memory, 0x0f8000 on 1040)              |_memtop 
+MEMVAL2                         equ $43A                ; $00043A|long |Validates memcntrl and memconf if $237698AA             |memval2
+THEMD                           equ $48E                ; $00048E|long |Memory descriptor block                                 |themd
+MEMVAL3                         equ $51A                ; $00051A|long |If $5555AAAA, reset                                     |memval3
+
+MEMVAL3_VALID                   equ $5555aaaa
 
 MAX_FILES                       equ 9
 NOT_SUPPORTED                   equ 13
 RESVECTOR_MAGIC                 equ $31415926           ; magic number to setup the reset vector
+PARAMS_SIZE                     equ param2_tos104uk-param1_tos100de
+
+PARAM_FILENAME_FIELD            equ 0
+PARAM_BASE_ADDR_FIELD           equ 14
+PARAM_END_ADDR_FIELD            equ 16
+PARAM_LENGTH_FIELD              equ 18
+PARAM_NON_RELOC_ADDR_FIELD      equ 22
+PARAM_RESVEC_OFFSET_FIELD       equ 26
+PARAM_INSTALL_SIGN_FIELD        equ 28
+PARAM_CRC_OFFSET_FIELD          equ 32
+PARAM_CRCOK_OFFSET_FIELD        equ 34
 
 ; ---------------------------------------------------------------
 ; Main program
@@ -272,8 +289,8 @@ select:
 ; d0 = entry number
 ; ---------------------------------------------------------------
 get_params:
-    mulu    #34, d0
-    lea     param1_tos100de-34(pc), a2  ; precompens.
+    mulu    #PARAMS_SIZE, d0
+    lea     param1_tos100de-PARAMS_SIZE(pc), a2  ; precompens.
     add.l   d0, a2                      ; address
 
     move.l  a2, selected_params         ; store it
@@ -326,7 +343,7 @@ load_tos_image:
     bmi     load_error
 
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2                  ; selected TOS's length
+    move.l  PARAM_LENGTH_FIELD(a2), d2  ; selected TOS's length
     movea.l PHYSTOP.w, a6               ; phystop
     suba.l  d2, a6
 
@@ -348,7 +365,7 @@ load_tos_image:
 
     move.l  newphy(pc), -(sp)
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2                  ; selected TOS's length
+    move.l  PARAM_LENGTH_FIELD(a2), d2  ; selected TOS's length
     move.l  d2, -(sp)
     move.w  handle(pc), -(sp)
     move.w  #$3F, -(sp)
@@ -356,7 +373,7 @@ load_tos_image:
     lea     $C(sp), sp
 
     move.l  selected_params(pc), a2
-    move.l  18(a2), d2                  ; selected TOS's length
+    move.l  PARAM_LENGTH_FIELD(a2), d2  ; selected TOS's length
 
     cmp.l   d2, d0
     bne     load_error                  ; load error
@@ -379,9 +396,9 @@ load_tos_image:
     move.l  a6, d2
     swap    d2
     move.l  selected_params(pc), a2
-    move.w  14(a2), d3                  ; selected TOS's base high word
-    move.w  16(a2), d4                  ; end address high word
-    move.l  18(a2), d5                  ; length
+    move.w  PARAM_BASE_ADDR_FIELD(a2), d3 ; selected TOS's base high word
+    move.w  PARAM_END_ADDR_FIELD(a2), d4 ; end address high word
+    move.l  PARAM_LENGTH_FIELD(a2), d5  ; length
 
     sub.w   d3, d2                      ; phystop is always on round adress
 
@@ -389,7 +406,8 @@ load_tos_image:
     move.l  a6, a4
     add.l   d5, a5                      ; end adr.
 
-    move.l  22(a2), a1                  ; get no-reloc table
+    ; get no-reloc table address
+    move.l  PARAM_NON_RELOC_ADDR_FIELD(a2), a1  
     moveq   #0, d0
 
 ; ---------------------------------------------------------------
@@ -418,26 +436,34 @@ notrom:
     cmp.l   a5, a6
     blt.s   reloc
 
-    move.l  28(a2), $3F8.w              ; sign of install version 'check_de_100 - check_de_206'
+    ; sign of install version 'check_de_100 - check_de_206'
+    move.l  PARAM_INSTALL_SIGN_FIELD(a2), $3F8.w 
     move.l  a4, $3FC.w
 
     ; Ensure restart of new TOS after warm reset
     move.l  #RESVECTOR_MAGIC, RESVALID.w
 
-    move.w  26(a2), d2                  ; reset entry offset
+    ; reset entry offset
+    move.w  PARAM_RESVEC_OFFSET_FIELD(a2), d2  
     ext.l   d2
     move.l  a4, a5
     add.l   d2, a5                      ; point after resvector
     move.l  a5, RESVECTOR.w
-    move.l  #$5555aaaa, $51a.w          ; This is due TOS 1.00 !
+    move.l  #MEMVAL3_VALID, MEMVAL3.w  ; This is due TOS 1.00 !
 
-    ; patch crc check
-    move.w    32(a2), d0                ; get CRC offset routine start address
+    ; ---------------------------------------------------------------
+    ; Patch crc check
+    ; ---------------------------------------------------------------
+
+    ; get CRC offset routine start address    
+    move.w    PARAM_CRC_OFFSET_FIELD(a2), d0  
+    ; get crcok routine start offset
+    move.w    PARAM_CRCOK_OFFSET_FIELD(a2), d1   
     beq.s     .no_crc                   ; if not 0
     move.l    a4, a0                    ; apply offset to TOS start
     adda.w    d0, a0
     move.w    #$6000, (a0)+             ; patch existing move.l #banksize,d7
-    move.w    #$0098, (a0)+             ; by bra.w crcok and nop
+    move.w    d1, (a0)+                 ; by bra.w crcok and nop
     move.w    #$4e71, (a0)+             ; ref: https://github.com/th-otto/tos3x/blob/master/bios/startup.S#L1750
 
 .no_crc:
@@ -804,8 +830,8 @@ show_found_TOS_msg:
 insert_filename:
 
     ext.l   d0
-    mulu    #34, d0
-    lea     param1_tos100de-34(pc), a2
+    mulu    #PARAMS_SIZE, d0
+    lea     param1_tos100de-PARAMS_SIZE(pc), a2
     add.l   d0, a2
     move.l  DTA(pc), a1
     lea     30(a1), a1
@@ -918,6 +944,7 @@ param1_tos100de:
     dc.w    $74
     dc.l    $54313030
     dc.w    0
+    dc.w    0
 
 ;UK 1.04
 param2_tos104uk
@@ -927,6 +954,7 @@ param2_tos104uk
     dc.l    non_rel_tos104uk
     dc.w    $80
     dc.l    $54313034
+    dc.w    0
     dc.w    0
 
 ;German 2.06
@@ -938,6 +966,7 @@ param3_tos206de:
     dc.w    $7e
     dc.l    $54323036
     dc.w    0
+    dc.w    0
 
 ;UK 2.06
 param4_tos206uk:
@@ -947,6 +976,7 @@ param4_tos206uk:
     dc.l    non_rel_tos206us_uk
     dc.w    $7e
     dc.l    $54323036
+    dc.w    0
     dc.w    0
 
 ;UK supertos 2.06
@@ -958,6 +988,7 @@ param5_tos206uk_super
     dc.w    $7e
     dc.l    $54323036
     dc.w    0
+    dc.w    0
 
 ;US 2.06
 param6_tos206us
@@ -967,6 +998,7 @@ param6_tos206us
     dc.l    non_rel_tos206us_uk  ;same as UK TOS 2.06
     dc.w    $7e
     dc.l    $54323036
+    dc.w    0
     dc.w    0
 
 ;US 1.04
@@ -978,6 +1010,7 @@ param7_tos104us
     dc.w    $80
     dc.l    $54313034
     dc.w    0
+    dc.w    0
 
 ;UK 1.00
 param8_tos100uk:
@@ -987,6 +1020,7 @@ param8_tos100uk:
     dc.l    non_rel_tos100us_uk
     dc.w    $74
     dc.l    $54313030
+    dc.w    0
     dc.w    0
 
 ;US 1.00
@@ -998,6 +1032,7 @@ param9_tos100us:
     dc.w    $74
     dc.l    $54313030
     dc.w    0
+    dc.w    0
 
 ;German 1.04
 param10_tos104de:
@@ -1007,6 +1042,7 @@ param10_tos104de:
     dc.l    non_rel_tos104de
     dc.w    $80
     dc.l    $54313034
+    dc.w    0
     dc.w    0
 
 ;Swedish 2.06
@@ -1018,6 +1054,7 @@ param11_tos206sw:
     dc.w    $7e
     dc.l    $54323036
     dc.w    0
+    dc.w    0
 
 ;French 2.06
 param12_tos206fr
@@ -1027,7 +1064,8 @@ param12_tos206fr
     dc.l    non_rel_tos206fr   ; Nonreloc data address - long
     dc.w    $7e                ; Offset after resetvector - word
     dc.l    $54323036          ; Install sign - long
-    dc.w    $7fa
+    dc.w    $7fa               ; crc start routine offset
+    dc.w    $98                ; crcok start routine offset
 
 ; diff
 ;           US 2.06         SW 2.06             UK 2.06         DE 2.06
