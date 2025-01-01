@@ -62,8 +62,8 @@ PARAM_LENGTH_FIELD              equ 18
 PARAM_NON_RELOC_ADDR_FIELD      equ 22
 PARAM_RESVEC_OFFSET_FIELD       equ 26
 PARAM_INSTALL_SIGN_FIELD        equ 28
-PARAM_CRC_OFFSET_FIELD          equ 32
-PARAM_CRCOK_OFFSET_FIELD        equ 34
+PARAM_CRC_START_OFFSET_FIELD    equ 32
+PARAM_CRC_END_OFFSET_FIELD        equ 34
 
 ; ---------------------------------------------------------------
 ; Main program
@@ -262,15 +262,19 @@ check_next:
 
 select:
     move.w  fscount(pc), d3
-    add.w   #'0', d3
-    move.b  d3, selection2_message
+    move.w  d3, d4                      ; save nb of TOS found
+    add.w   #'0', d3                    ; convert to ASCII
+    move.b  d3, selection2_message          
     lea     selection_message(pc), a0
-    bsr     show_message
+    bsr     show_message                ; show message
 
-    bsr     get_input_key
+    bsr     get_input_key               ; get key pressed in d0
 
-    sub.b   #'1', d0
-    bmi.s   select
+    sub.b   #'1', d0                    ; get index value starting at ASCII 1
+    bmi.s   select                      ; if less, wrong input
+
+    cmp.b   d4, d0                      ; if more than nb if found TOS, wrong input
+    bge.b   select
 
     else
     ;look other IMG files,  max 9 total
@@ -346,8 +350,11 @@ load_tos_image:
     move.l  PARAM_LENGTH_FIELD(a2), d2  ; selected TOS's length
     movea.l PHYSTOP.w, a6               ; phystop
     suba.l  d2, a6
+    move.l  a6, new_phystop             ; new phystop
 
-    move.l  a6, newphy                  ; new phystop
+    movea.l MEMTOP.w, a6                ; memtop
+    suba.l  d2, a6
+    move.l  a6, new_memtop              ; new memtop
 
     move.w  #$FFFF, -(sp)               ; resol. stay
     movea.l a6, a5
@@ -363,7 +370,7 @@ load_tos_image:
     trap    #1
     addq.w  #6, sp
 
-    move.l  newphy(pc), -(sp)
+    move.l  new_phystop(pc), -(sp)
     move.l  selected_params(pc), a2
     move.l  PARAM_LENGTH_FIELD(a2), d2  ; selected TOS's length
     move.l  d2, -(sp)
@@ -383,9 +390,12 @@ load_tos_image:
     trap    #1
     addq.w  #4, sp
 
-    move.l  newphy(pc), d0
+    move.l  new_memtop(pc), d0
     move.l  d0, a6
+    move.l  a6, MEMTOP.w                ; now change memtop
 
+    move.l  new_phystop(pc), d0
+    move.l  d0, a6
     move.l  a6, PHYSTOP.w               ; now change phystop
 
     pea     relocating_message(pc)      ; relocating message
@@ -456,9 +466,9 @@ notrom:
     ; ---------------------------------------------------------------
 
     ; get CRC offset routine start address    
-    move.w    PARAM_CRC_OFFSET_FIELD(a2), d0  
+    move.w    PARAM_CRC_START_OFFSET_FIELD(a2), d0  
     ; get crcok routine start offset
-    move.w    PARAM_CRCOK_OFFSET_FIELD(a2), d1   
+    move.w    PARAM_CRC_END_OFFSET_FIELD(a2), d1   
     beq.s     .no_crc                   ; if not 0
     move.l    a4, a0                    ; apply offset to TOS start
     adda.w    d0, a0
@@ -901,7 +911,7 @@ unsupported_message:
 selection_message:
     dc.b    13, 10, 13, 10, 'select TOS to install  1-'
 selection2_message:
-    dc.b    '1.', 0
+    dc.b    '1:', 0
     endc
 
 ; -------------------------------------------------------------
@@ -931,8 +941,9 @@ handle:
 ; Nonreloc data address - long
 ; Offset after resetvector - word
 ; Install sign - long
-; crc check ok offset
-; Total 34 bytes
+; crc check start routine offset
+; crc check end routine offset
+; Total 36 bytes
 ; -------------------------------------------------------------
 
 ;German 1.00
@@ -1454,7 +1465,10 @@ non_rel_tos206fr:
 ; -------------------------------------------------------------
    section bss
 
-newphy:
+new_phystop:
+    ds.l   1
+
+new_memtop:
     ds.l   1
 
 selected_params
