@@ -1,0 +1,193 @@
+           XFERRATE v1.2 - measure disk transfer rate
+           ------------------------------------------
+
+XFERRATE version 1.2 is Freeware by Roger Burrows, Anodyne Software.
+It is hereby placed in the public domain, and may be freely copied
+and distributed.  Please keep the program executable and this
+documentation together - thanks.
+
+
+
+Description
+-----------
+XFERRATE is a program that measures the sustained data transfer rate
+of your hard disk drive(s), using the standard low-level software
+interface(s) to your hard disk driver.  This means that it measures
+a combination of raw drive speed, interface speed, and disk driver
+performance.  The data transfer rate is measured by performing reads
+of multiple adjacent data sectors (192 kilobytes per transfer), and
+is reported in kilobytes per second (kb/sec).
+NOTE: 1 kilobyte = 1024 bytes for this measurement.
+
+XFERRATE v1.2 uses the traditional bios interface (Rwabs()/Getbpb()),
+as well as the newer XHDI interface (if available), and reports
+transfer rates for each separately.
+
+To detect variations across a partition, the rate is measured at both
+the start and the end of the partition; if the measurements differ by
+more than 10 kb/sec, a range is reported (the first number applies to
+the beginning of the partition, the second to the end).  Otherwise,
+an average is reported.  Rates are always rounded to the nearest
+10kb/sec.
+
+Data transfer rate is measurable on any drive from C to Z (inclusive)
+that can be accessed by either the standard bios calls Getbpb()/Rwabs()
+or the XHDI interface.
+NOTE: older hard disk drivers such as AHDI or the ICD software do not
+support the XHDI interface.
+
+
+
+XFERRATE and CD Recorders
+-------------------------
+XFERRATE was written to provide additional information for users of
+Anodyne Software's CD Recording package, CD Writer Suite.  Knowing the
+data transfer rate of your hard drive will enable you to _estimate_
+the maximum rate at which you can successfully record from a given
+partition, using the following tables:
+
+     Data transfer rate             Maximum CD recording rate
+     ------------------             -------------------------
+     Less than 170 kb/sec             Probably not possible
+       170 - 250 kb/sec                   1X, marginal
+       250 - 360 kb/sec                        1X
+       360 - 450 kb/sec                   2X, marginal
+       450 - 900 kb/sec                        2X
+       900 - 1200 kb/sec                  4X, marginal
+      1200 - 2990 kb/sec                       4X
+      3000 - 4000 kb/sec                  6X, marginal
+     More than 4000 kb/sec                     6X
+
+NOTES:
+1. These are guidelines only; since other factors can affect the
+   success of a CD recording, the only certain way to determine the
+   maximum recording rate is by use of the "Simulate" feature within
+   CD Writer Suite.
+2. At a given speed, more data must be transferred for audio recording
+   than for data recording.  Therefore, for recording rates listed as
+   marginal in the table above, data recording may be successful where
+   audio recording is not.
+3. When writing audio CDs, certain types of audio files require less
+   processing than others (the Info button on the CD Writer Preferences
+   screen will show this for your recorder).  Therefore, particularly
+   on slower CPUs, these types of files may be successfully written
+   where others are not.
+
+
+
+How to use XFERRATE
+------------------
+Double-click on XFERRATE.TTP.  When the dialog box is displayed, just
+press enter.  You will be prompted for the drive letter(s) (i.e. disk
+partition(s)) to measure.  After entering the drive letter(s), the data
+transfer rate test will be run in turn for each partition and the
+results displayed; note that each test will take approximately ten
+seconds.  When all tests are complete, XFERRATE will wait for you to
+press enter before returning to the desktop.
+
+If you are running from a command-line shell such as Gulam, you may
+enter the drive letter(s) as an argument to XFERRATE; in this case,
+there will be no prompt, and no pause at the end of processing.
+
+As a convenience, you may enter an asterisk as the drive letter to
+request tests of all online disks.
+
+
+
+Sample results
+--------------
+The following results were obtained for selected systems.  Values are
+for the Rwabs() interface only, but testing suggests that data transfer
+rates via the XHDI interface are essentially the same (within normal
+margins of error).
+
+                                                Hard disk       Data transfer
+   Drive                    Interface             driver        rate (kb/sec)
+   -----                    ---------           ---------       -------------
+1040ST with:
+   Seagate ST157N           ACSI/ICD AdSCSI+    ICDBOOT (note1)      570
+   Seagate ST3610N          ACSI/ICD AdSCSI+    HDDRIVER 7.55       1200
+   Seagate ST3610N          ACSI/ICD AdSCSI+    ICDBOOT (note1)     1235
+   Seagate ST3610N          ACSI/ICD Link       HDDRIVER 7.55       1200
+   Seagate ST3610N          ACSI/WB Link97      AHDI 5.0            1100
+   Seagate ST3610N          ACSI/WB Link97      HDDRIVER 7.55       1200
+   IBM Ultrastar 2.16GB     ACSI/WB Link97      HDDRIVER 7.55       1240
+ 
+Falcon030 with:
+   CSC 128MB 2.5"              IDE              HDDRIVER 7.55      60-940 (note2)
+   Quantum GLS 170MB 2.5"      IDE              HDDRIVER 7.93      130-840
+   IBM 344MB 2.5"              IDE              HDDRIVER 6.0       570-880 (note2)
+   IBM Travelstar 3.2GB        IDE              HDDRIVER 7.61       1650
+   SanDisk Ultra II (CF card)  IDE              HDDRIVER 10.10    2870-2880
+   IBM Ultrastar 2.16GB        SCSI             HDDRIVER 7.55       1525
+   IBM Ultrastar 2.16GB        SCSI             HDDRIVER 7.93       1510
+   Iomega JAZ 1GB              SCSI             HDDRIVER 6.0        1520
+   Quantum Empire 1080S 1GB    SCSI             HDDRIVER 7.93       1830
+   Seagate ST3610N             SCSI             HDDRIVER 7.55       1510
+   Seagate ST32550N            SCSI             HDDRIVER 7.93       1500
+
+TT030 with:
+   Maxtor LXT-200S             SCSI             AHDI 5.0           750-950 (note2)
+   Fujitsu M2624S              SCSI             HDDRIVER 7.55     1300-1780 (note3)
+   IBM Ultrastar 2.16GB     ACSI/WB Link97      HDDRIVER 7.55       1240
+   IBM Ultrastar 2.16GB        SCSI             HDDRIVER 7.55       1730
+   Seagate ST3610N             SCSI             HDDRIVER 7.55       1610
+   Seagate ST3610N          ACSI/ICD Link       HDDRIVER 7.55       1260
+   Seagate ST3610N          ACSI/WB Link97      HDDRIVER 7.55       1220
+
+Falcon030/Nemesis 24MHz (CPU+bus)
+   SanDisk Ultra II (CF card)  IDE              HDDRIVER 10.10    4360-4390 (note 4)
+
+Falcon030/CenTurbo2B with:
+   IBM DTTA-351010             IDE              HDDRIVER 7.71     4580-4600 (note4)
+
+Hades060 with:
+   Syquest 105R                SCSI             HDDRIVER v7.63    1390-1420
+   Quantum Maverick 540S       SCSI             HDDRIVER v7.63    1250-2570 (note2)
+   Quantum Fireball 2.1GB      IDE              HDDRIVER v7.63    5070-5270 (note4)
+
+Notes:
+   (1) versions 5.2.0 & 6.0.4 tested
+   (2) varies by partition, i.e. distance from disk spindle
+   (3) in this case, the variation in effective data transfer rates
+       was due to read retries slowing down transfers in some parts
+       of the disk
+   (4) this is not a misprint :-)
+
+We encourage you to send us any results that you have obtained on your
+system, especially if you have attained higher transfer rates.  We'll
+add them to this document and publish them on our web page if there is
+sufficient interest. Please email your results to: info@anodynesoftware.com.
+Be sure to include all of the information, as shown above.
+
+
+
+Some tentative conclusions from the above results
+-------------------------------------------------
+1. We can estimate the typical maximum data transfer rates of the various
+   interfaces, as follows:
+
+   Interface     Max data xfer rate (kb/sec)
+   ---------     ---------------------------
+   ACSI                    1300
+   IDE           1700 (standard Falcon) to 5200+ (Hades060)
+   SCSI          1600 (Falcon) to 2600 (Hades060)
+
+2. The ICD AdSCSI+ and Link have the same performance; the Link97 is 0-3%
+   slower, possibly due to the additional overhead of managing SCSI
+   arbitration.
+
+3. Both the ICD driver and HDDRIVER are significantly (about 10%) faster
+   than AHDI.
+
+
+
+Anodyne Software
+----------------
+If you have Internet access, visit our web site at:
+     http://www.anodynesoftware.com
+or contact us by email at:
+     info@anodynesoftware.com
+
+Roger Burrows
+29/June/2018

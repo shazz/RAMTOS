@@ -1,0 +1,37 @@
+   IMGRF - Image run fast
+
+It is very easy to use: just drag & drop ST
+or MSA image file into IMGRF2.PRG and it
+will start running image  - TOS 2.06.
+Or may associate extension(s) ST and MSA 
+to program, then just start with double-
+click on image file - TOS 1.04, 1.02,
+1.62 and 1.06 .
+There are separated versions for
+TOS 2.06 ,1.04 ,1.02 and 1.62-1.06.
+Should work in all language versions.
+In TOS 1.02 PRG must be
+in same DIR with image files
+if want start with doubleclick.
+Otherwise put PRG in root of A
+or  rename to TTP and type in
+image's path (if not in same
+DIR) and filename.
+
+IMGRF0.PRG is for TOS 1.02.
+IMGRF1.PRG is for TOS 1.04.
+IMGRF162.PRG is for TOS 1.62
+and 1.06 .
+IMGRF2.PRG is for TOS 2.06.
+IMGRF216.PRG is for Mega STE
+with TOS 2.06, and will run games
+at 16MHz (some will not like it).
+IMGRF2X.PRG is for TOS2.06
+and runs combined (SS/DS)
+floppy images. Beta.
+
+
+P. Putnik, June 2007-March 2008.
+
+
+

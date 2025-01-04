@@ -16,5 +16,6 @@
 #G 03 FF   *.PRG@ @ 
 #P 03 FF   *.TTP@ @ 
 #F 03 04   *.TOS@ @ 
-#F 03 04   C:\RAMTOS8.PRG@ *.IMG@ 
+#F 03 04   C:\RAMTOS8.TOS@ *.IMG@ 
+#F 03 04   C:\IMGRUN\IMGRF2.TOS@ *.MSA@ 
 
