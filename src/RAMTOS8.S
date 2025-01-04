@@ -19,8 +19,7 @@
 
 ; Principle of work:
 
-; We need to relocate all 4-byte (long) addresses
-; inside ROM-TOS for new position in RAM
+; We need to relocate all 4-byte (long) addresses inside ROM-TOS for new position in RAM
 ; It can be done with table containing all those addresses
 ; We need separate tables for every TOS version, since diverse languages
 ; have diverse locations (addresses) of code and datas
@@ -53,7 +52,7 @@ MEMVAL3                         equ $51A                ; $00051A|long |If $5555
 MEMVAL3_VALID                   equ $5555aaaa
 
 MAX_FILES                       equ 9
-NOT_SUPPORTED                   equ 13
+NOT_SUPPORTED                   equ 14
 RESVECTOR_MAGIC                 equ $31415926           ; magic number to setup the reset vector
 PARAMS_SIZE                     equ param2_tos104uk-param1_tos100de
 
@@ -71,6 +70,25 @@ PARAM_CRC_END_OFFSET_FIELD      equ 34
 ; Main program
 ; ---------------------------------------------------------------
 begin:
+    clr.l   -(sp)                       ; clear stack
+    move.w  #32, -(sp)                  ; prepare for super mode
+    trap    #1                          ; call gemdos
+    addq.l  #6, sp                      ; clear up stack
+    move.l  d0, -(sp)
+
+    ifne _RAMTOS_
+    lea     checking_message(pc), a0
+    bsr     show_message
+
+    ;Check is yet installed
+    cmpi.l  #$54323036, $3F8.w          ; tos206
+    beq     quit
+    cmpi.l  #$54313030, $3F8.w          ; tos100
+    beq     quit
+    cmpi.l  #$54313034, $3F8.w          ; tos104
+    beq     quit   
+    endc
+
     lea     stack(pc), sp
 
     ;First print message
@@ -114,7 +132,7 @@ begin:
     clr.b   (a2)
 
 ; ---------------------------------------------------------------
-;
+; gotext
 ; ---------------------------------------------------------------
 gotext:
     lea     -30(a3), a3                 ;precompens. offset
@@ -222,12 +240,12 @@ which:
 
     bsr     find_version
     cmp.w   #NOT_SUPPORTED, d0
-    beq     show_unsupported_msg        ;instead show_image_not_found_msg
+    beq     show_unsupported_msg        ; instead show_image_not_found_msg
 
     ifeq _RAMTOS_
     lea     TOS_list(pc), a2
-    move.w  d0, (a2)+                   ;put in list
-    move.l  a2, ftosp                   ;set  pointer
+    move.w  d0, (a2)+                   ; put in list
+    move.l  a2, ftosp                   ; set  pointer
 
     bsr     insert_filename
 
@@ -301,12 +319,6 @@ get_params:
 
     move.l  a2, selected_params         ; store it
 
-    pea     0.w
-    move.w  #$20, -(sp)
-    trap    #1                          ; set supervisor
-    addq.w  #6, sp
-    move.l  d0, -(sp)
-
     ifeq _SELTOS_
     ;Check is yet installed
     cmpi.l  #$54323036, $3F8.w ;tos206
@@ -321,12 +333,12 @@ anyway:
 	bsr     show_message
 
 	bsr     get_input_key
-	bclr    #5,d0                       ; upper case
+	bclr    #5, d0                      ; upper case
 
-	cmp.b   #'Y',d0
+	cmp.b   #'Y', d0
 	beq.s   load_tos_image
 
-	moveq   #0,d0                       ; no error sign
+	moveq   #0, d0                      ; no error sign
 	bra     switch_user_mode
     endc
 
@@ -351,6 +363,8 @@ load_tos_image:
 
     move.l  selected_params(pc), a2
     move.l  PARAM_LENGTH_FIELD(a2), d2  ; selected TOS's length
+    move.l  d2, required_space
+
     movea.l PHYSTOP.w, a6               ; phystop
     suba.l  d2, a6
     move.l  a6, new_phystop             ; new phystop
@@ -378,7 +392,7 @@ load_tos_image:
     move.l  PARAM_LENGTH_FIELD(a2), d2  ; selected TOS's length
     move.l  d2, -(sp)
     move.w  handle(pc), -(sp)
-    move.w  #$3F, -(sp)
+    move.w  #$3F, -(sp)                 ; Fread(handle, length, buf)
     trap    #1
     lea     $C(sp), sp
 
@@ -396,6 +410,17 @@ load_tos_image:
     move.l  new_memtop(pc), d0
     move.l  d0, a6
     move.l  a6, MEMTOP.w                ; now change memtop
+
+    move.l  required_space, d0
+    sub.l   d0, THEMD+8.w                ; Change Gemdos first free memory block 0f 512 bytes
+    ; themd
+    ;    typedef struct md
+    ;    {
+    ;       struct md *m_link; /* pointer to next block $48e*/
+    ;       VOIDP m_start; /* pointer to start of block $492*/
+    ;   =>  LONG m_length; /* length of block $496 */
+    ;       BASEPAGE *m_own; /* pointer to basepage of owner $49A*/
+    ;    } MD;
 
     move.l  new_phystop(pc), d0
     move.l  d0, a6
@@ -462,24 +487,30 @@ not_in_rom:
     move.l  a4, a5
     add.l   d2, a5                      ; point after resvector
     move.l  a5, RESVECTOR.w
-    move.l  #MEMVAL3_VALID, MEMVAL3.w  ; This is due TOS 1.00 !
+    move.l  #MEMVAL3_VALID, MEMVAL3.w   ; This is due TOS 1.00 !
 
     ; ---------------------------------------------------------------
     ; Patch crc check
     ; ---------------------------------------------------------------
 
     ; get CRC offset routine start address    
-    move.w    PARAM_CRC_START_OFFSET_FIELD(a2), d0  
+    move.w  PARAM_CRC_START_OFFSET_FIELD(a2), d0  
     ; get crcok routine start offset
-    move.w    PARAM_CRC_END_OFFSET_FIELD(a2), d1   
-    beq.s     .no_crc                   ; if not 0
-    move.l    a4, a0                    ; apply offset to TOS start
-    adda.w    d0, a0
-    move.w    #$6000, (a0)+             ; patch existing move.l #banksize,d7
-    move.w    d1, (a0)+                 ; by bra.w crcok and nop
-    move.w    #$4e71, (a0)+             ; ref: https://github.com/th-otto/tos3x/blob/master/bios/startup.S#L1750
+    move.w  PARAM_CRC_END_OFFSET_FIELD(a2), d1   
+    beq.s   .no_crc                   ; if not 0
+    move.l  a4, a0                    ; apply offset to TOS start
+    adda.w  d0, a0
+    move.w  #$6000, (a0)+             ; patch existing move.l #banksize,d7
+    move.w  d1, (a0)+                 ; by bra.w crcok and nop
+    move.w  #$4e71, (a0)+             ; ref: https://github.com/th-otto/tos3x/blob/master/bios/startup.S#L1750
 
 .no_crc:
+
+    ; attempt to change Reset vector: Initial PC   
+    ; move.l  a4, a0
+    ; adda.l  #$30, a0
+    ; move.l  a0, $4.w                    ; now change reset to RAMTOS reset
+
     jmp     (a4)                        ; reset via ramtos!
 
 skip_not_relocated:
@@ -690,12 +721,22 @@ check_us_104:
 
 check_de_104:
     cmp.w   #3, $1c(a1)
-    bne.s   not_supported
+    bne.s   check_fr_104
 
     lea     t10m(pc), a0
     bsr     show_found_TOS_msg
     moveq   #10, d0
     rts
+
+check_fr_104:
+    cmp.w   #5, $1c(a1)
+    bne     not_supported
+
+    lea     t13m(pc), a0
+    bsr     show_found_TOS_msg
+    moveq   #13, d0
+    rts
+
 
 ; ---------------------------------------------------------------
 ; TOS 2.06
@@ -859,6 +900,9 @@ insert_filename:
 ; -------------------------------------------------------------
 ; Messages
 ; -------------------------------------------------------------
+checking_message:
+    dc.b    $1b,$45, 'Checking ig installed... ', 0
+
 title_message:
     dc.b    $0d,$0a, 'RAMTOS/SELTOS v8 by P. Putnik & Shazz',$0d,$0a,0
 
@@ -880,6 +924,7 @@ t9m     dc.b 'TOS 1.00 US', 0
 t10m    dc.b 'TOS 1.04 German', 0
 t11m    dc.b 'TOS 2.06 Swedish', 0
 t12m    dc.b 'TOS 2.06 French', 0
+t13m    dc.b 'TOS 1.04 French', 0
 
 ;Image file name
 filename:
@@ -922,7 +967,7 @@ selection2_message:
 ; Variables
 ; -------------------------------------------------------------
 founp:
-    dc.b    13, 10, "x: ", 0
+    dc.b    $0d,$0a, "x: ", 0
     even
 
 founc:      dc.w 0
@@ -966,7 +1011,7 @@ param2_tos104uk
     ds.b    14
     dc.w    $00FC, $00FF
     dc.l    $30000
-    dc.l    non_rel_tos104uk
+    dc.l    non_rel_tos104uk_us
     dc.w    $80
     dc.l    $54313034
     dc.w    0
@@ -1004,6 +1049,7 @@ param5_tos206uk_super
     dc.l    $54323036
     dc.w    $7fa
     dc.w    $98
+
 ;US 2.06
 param6_tos206us
     ds.b    14
@@ -1020,7 +1066,7 @@ param7_tos104us
     ds.b    14
     dc.w    $00FC, $00FF
     dc.l    $30000
-    dc.l    non_rel_tos104uk  ;same as UK TOS 1.04 ???
+    dc.l    non_rel_tos104uk_us  ;same as UK TOS 1.04 ???
     dc.w    $80
     dc.l    $54313034
     dc.w    0
@@ -1081,14 +1127,16 @@ param12_tos206fr
     dc.w    $7fa               ; crc start routine offset
     dc.w    $98                ; crcok start routine offset
 
-; diff
-;           US 2.06         SW 2.06             UK 2.06         DE 2.06
-;     ds.b
-;     dc.w  $00E0, $00E4    $00E0, $00E4        $00E0, $00E4    $00E0, $00E4
-;     dc.l  $40000          $40000              $40000          $40000
-;     dc.l
-;     dc.w  $7e             $7e                 $7e             $7e
-;     dc.l  $54323036       $54323036           $54323036       $54323036
+;UK 1.04
+param13_tos104fr
+    ds.b    14
+    dc.w    $00FC, $00FF
+    dc.l    $30000
+    dc.l    non_rel_tos104fr
+    dc.w    $80
+    dc.l    $54313034
+    dc.w    0
+    dc.w    0
 
 ; -------------------------------------------------------------
 ; Non-relocating tables
@@ -1122,8 +1170,35 @@ non_rel_tos100de:
     dc.l    $2be14
     dc.l    0
 
+;uk and us tos 1.00
+non_rel_tos100us_uk
+    dc.l    $17c8
+    dc.l    $17d8
+    dc.l    $252e
+    dc.l    $2566
+    dc.l    $28e6
+    dc.l    $2b40
+    dc.l    $8560
+    dc.l    $a86e
+    dc.l    $fb90
+    dc.l    $12678
+    dc.l    $13424
+    dc.l    $13560
+    dc.l    $13b5c
+    dc.l    $13d12
+    dc.l    $145bc
+    dc.l    $146bc
+    dc.l    $20b1a
+    dc.l    $20b3e
+    dc.l    $2107c
+    dc.l    $2b308
+    dc.l    $2b30e
+    dc.l    $2b316
+    dc.l    $2c160
+    dc.l    0
+
 ;uk tos 1.04
-non_rel_tos104uk
+non_rel_tos104uk_us
     dc.l    $117e
     dc.l    $1514
     dc.l    $3bac
@@ -1149,57 +1224,59 @@ non_rel_tos104uk
     dc.l    $2a680
     dc.l    0 ;23 entry
 
-;german tos 2.06
-non_rel_tos206de
-    dc.l    $89a
-    dc.l    $13d0
-    dc.l    $1bca
-    dc.l    $1d3a
-    dc.l    $1d3e
-    dc.l    $1df0
-    dc.l    $1df6
-    dc.l    $229c
-    dc.l    $622c
-    dc.l    $6bd0
-    dc.l    $8da8
-    dc.l    $8dca
-    dc.l    $106c0
-    dc.l    $13316
-    dc.l    $15840
-    dc.l    $17b4a
-    dc.l    $18c5c
-    dc.l    $190fc
-    dc.l    $19274
-    dc.l    $19d64
-    dc.l    $1a96a
-    dc.l    $1b244
-    dc.l    $1c3fc
-    dc.l    $1ca64
-    dc.l    $1ccca
-    dc.l    $1cd98
-    dc.l    $1cfbe
-    dc.l    $1d82a
-    dc.l    $20854
-    dc.l    $21210
-    dc.l    $22bdc
-    dc.l    $22bf8
-    dc.l    $2416e
-    dc.l    $265b8
-    dc.l    $266a6
-    dc.l    $27248
-    dc.l    $2aa0c
-    dc.l    $2b042
-    dc.l    $2b802
-    dc.l    $2b82a
-    dc.l    $2ba18
-    dc.l    $32842
-    dc.l    $33598
-    dc.l    $351c0
-    dc.l    $3a2e2
-    dc.l    $3a47c
-    dc.l    $3a60a
-    dc.l    $3a60e
-    dc.l    $3b6ce
+;german tos 1.04
+non_rel_tos104de
+    dc.l    $117e
+    dc.l    $1514
+    dc.l    $3a4c
+    dc.l    $3f0c
+    dc.l    $5608
+    dc.l    $6166
+    dc.l    $85ee
+    dc.l    $890e
+    dc.l    $15c76
+    dc.l    $1712e
+    dc.l    $17480
+    dc.l    $18438
+    dc.l    $1abf4
+    dc.l    $2521a
+    dc.l    $272ca
+    dc.l    $288ca
+    dc.l    $29676
+    dc.l    $297b2
+    dc.l    $29b52
+    dc.l    $29d08
+    dc.l    $2a5b2
+    dc.l    $2a6b2
+    dc.l    $2ec00
+    dc.l    0 ;23 entry
+
+; french 104
+non_rel_tos104fr:
+    dc.l    $117e               ; move.b  #$fe, (a2)+ [known in some TOS]
+    dc.l    $1514               ; bsr.w  $fc1612 [known in some TOS]
+    dc.l    $3a4c               ; and.b  #$fd, d0 [known in some TOS]
+    dc.l    $3f2a               ; => $3f0c, beq.w  $fc4028 [new!]
+    dc.l    $5626               ; => $5608, bra.w  $fc5724 [new!]
+    dc.l    $6184               ; => $6166, bra.w  $fc6280 [new!]
+    dc.l    $860c               ; => $85ee, bne.w  $fc870a [new!]
+    dc.l    $892c               ; => $890e, add.l  #$fe, d6 [new!]
+    dc.l    $15c94              ; => $15c76
+    dc.l    $1714c              ; => $1712e
+    dc.l    $1749e              ; => $17480
+    dc.l    $18456              ; => $18438
+    dc.l    $1ac12              ; => $1abf4
+    dc.l    $25238              ; => $2521a
+    dc.l    $272ec              ; => $272ca
+    dc.l    $288e8              ; => $288ca
+    dc.l    $29694              ; => $29676
+    dc.l    $297d0              ; => $297b2
+    dc.l    $29b70              ; => $29b52
+    dc.l    $29d26              ; => $29d08
+    dc.l    $2a5d0              ; => $2a5b2
+    dc.l    $2a6d0              ; => $2a6b2
+    dc.l    $2a6ce              ; manually added
+    dc.l    $2ec00              ; manually added
     dc.l    0
 
 ;uk and us tos 2.06
@@ -1306,60 +1383,6 @@ non_rel_tos206uk_super:
     dc.l    $3a3cc
     dc.l    0 ;48 entry
 
-;uk and us tos 1.00
-non_rel_tos100us_uk
-    dc.l    $17c8
-    dc.l    $17d8
-    dc.l    $252e
-    dc.l    $2566
-    dc.l    $28e6
-    dc.l    $2b40
-    dc.l    $8560
-    dc.l    $a86e
-    dc.l    $fb90
-    dc.l    $12678
-    dc.l    $13424
-    dc.l    $13560
-    dc.l    $13b5c
-    dc.l    $13d12
-    dc.l    $145bc
-    dc.l    $146bc
-    dc.l    $20b1a
-    dc.l    $20b3e
-    dc.l    $2107c
-    dc.l    $2b308
-    dc.l    $2b30e
-    dc.l    $2b316
-    dc.l    $2c160
-    dc.l    0
-
-;german tos 1.04
-non_rel_tos104de
-    dc.l    $117e
-    dc.l    $1514
-    dc.l    $3a4c
-    dc.l    $3f0c
-    dc.l    $5608
-    dc.l    $6166
-    dc.l    $85ee
-    dc.l    $890e
-    dc.l    $15c76
-    dc.l    $1712e
-    dc.l    $17480
-    dc.l    $18438
-    dc.l    $1abf4
-    dc.l    $2521a
-    dc.l    $272ca
-    dc.l    $288ca
-    dc.l    $29676
-    dc.l    $297b2
-    dc.l    $29b52
-    dc.l    $29d08
-    dc.l    $2a5b2
-    dc.l    $2a6b2
-    dc.l    $2ec00
-    dc.l    0 ;23 entry
-
 ;swedish tos 2.06
 non_rel_tos206sw:
     dc.l    $89a
@@ -1410,6 +1433,59 @@ non_rel_tos206sw:
     dc.l    $3a68c
     dc.l    $3a690
     dc.l    $3b750
+    dc.l    0
+
+;german tos 2.06
+non_rel_tos206de
+    dc.l    $89a
+    dc.l    $13d0
+    dc.l    $1bca
+    dc.l    $1d3a
+    dc.l    $1d3e
+    dc.l    $1df0
+    dc.l    $1df6
+    dc.l    $229c
+    dc.l    $622c
+    dc.l    $6bd0
+    dc.l    $8da8
+    dc.l    $8dca
+    dc.l    $106c0
+    dc.l    $13316
+    dc.l    $15840
+    dc.l    $17b4a
+    dc.l    $18c5c
+    dc.l    $190fc
+    dc.l    $19274
+    dc.l    $19d64
+    dc.l    $1a96a
+    dc.l    $1b244
+    dc.l    $1c3fc
+    dc.l    $1ca64
+    dc.l    $1ccca
+    dc.l    $1cd98
+    dc.l    $1cfbe
+    dc.l    $1d82a
+    dc.l    $20854
+    dc.l    $21210
+    dc.l    $22bdc
+    dc.l    $22bf8
+    dc.l    $2416e
+    dc.l    $265b8
+    dc.l    $266a6
+    dc.l    $27248
+    dc.l    $2aa0c
+    dc.l    $2b042
+    dc.l    $2b802
+    dc.l    $2b82a
+    dc.l    $2ba18
+    dc.l    $32842
+    dc.l    $33598
+    dc.l    $351c0
+    dc.l    $3a2e2
+    dc.l    $3a47c
+    dc.l    $3a60a
+    dc.l    $3a60e
+    dc.l    $3b6ce
     dc.l    0
 
 ; french 206
@@ -1475,6 +1551,9 @@ new_phystop:
 new_memtop:
     ds.l   1
 
+required_space:
+    ds.l   1
+
 selected_params
     ds.l    1
 
@@ -1487,4 +1566,3 @@ TOS_list:
 
 stack:
     ds.b    485000          ;place for load & screen & decomp
-
