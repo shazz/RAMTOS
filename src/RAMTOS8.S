@@ -1252,9 +1252,9 @@ non_rel_tos104de
 
 ; french 104
 non_rel_tos104fr:
-    dc.l    $117e               ; move.b  #$fe, (a2)+ [known in some TOS]
-    dc.l    $1514               ; bsr.w  $fc1612 [known in some TOS]
-    dc.l    $3a4c               ; and.b  #$fd, d0 [known in some TOS]
+    dc.l    $117e               ; => $117e,  move.b  #$fe, (a2)+ [known in some TOS]
+    dc.l    $1514               ; => $1414, bsr.w  $fc1612 [known in some TOS]
+    dc.l    $3a4c               ; => $3a4c, and.b  #$fd, d0 [known in some TOS]
     dc.l    $3f2a               ; => $3f0c, beq.w  $fc4028 [new!]
     dc.l    $5626               ; => $5608, bra.w  $fc5724 [new!]
     dc.l    $6184               ; => $6166, bra.w  $fc6280 [new!]
