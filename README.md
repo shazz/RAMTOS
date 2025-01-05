@@ -20,6 +20,26 @@ This branch is adding:
 - Copy `TOS206FR.IMG` as `RTOS.IMG` in the root directory for `RAMTOS8B`
 - Install Python 3.12+ with `capstone` pip library to generate TOS non-reloc address candidates [Optional]
 
+### Tools usage
+
+1. non-reloc matcher
+
+````bash
+python tools/match_patchs.py --tos-version 1.04 --source-country de --target-country fr > map_fr_104.txt
+````
+
+2. non-reloc identifier
+
+````bash
+python tools/disa.py --tos-version 2.06 --country fr
+````
+
+3. Assembling RAMTOS / SELTOS
+
+````bash
+./build.sh
+````
+
 ### Important note
 
 RAMTOS / SELTOS is not as compatible as ROM-based TOS (in addtion to existing TOS versions incompatibilities) so don't expect most existing software to work as is.
