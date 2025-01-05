@@ -7,24 +7,22 @@
 ; Cleaning, added support for French TOS 2.06 (12/2024)
 ; TOS 2.06 patched to remove CRC ROM check (01/2025)
 ; Improved SELTOS key pressed input (01/2025)
+; Added support for French TOS 1.04 (01/2025)
 ; Shazz / MJJ Prod
 
-; Recognises TOS 1.00 German,  US & (UK- ?? not tested)
-; TOS 1.04 US & UK & German
-; TOS 2.06 German
-; TOS 2.06 US & UK
+; Recognises TOS 1.00 German, US & (UK- ?? not tested)
+; TOS 1.04 US, UK, German, French
+; TOS 2.06 German, US, UK, Swedish, French
 ; 'Super'TOS 2.06 UK patched
-; TOS 2.06 Swedish
-; TOS 2.06 French
 
 ; Principle of work:
-
+;
 ; We need to relocate all 4-byte (long) addresses inside ROM-TOS for new position in RAM
 ; It can be done with table containing all those addresses
 ; We need separate tables for every TOS version, since diverse languages
 ; have diverse locations (addresses) of code and datas
 ; For supporting some 10 TOS versions 10 tables would take a lot of space
-
+;
 ; But there is a way with much shorter tables:
 ; All addresses for relocating must be in ROM address range
 ; so we can seek by it: for instance if ROM is in range
@@ -656,7 +654,7 @@ find_version:
     beq.s   check_uk_104
 
     cmp.w   #$0206, 2(a1)
-    beq     check_de_206
+    beq     check_tos_206
 
 not_supported:
     moveq   #NOT_SUPPORTED, d0          ; not found supported
@@ -694,6 +692,7 @@ check_us_100:
 
 ; ---------------------------------------------------------------
 ; TOS 1.02
+; not supported yet
 ; ---------------------------------------------------------------
 check_fr_102:
     bra not_supported
@@ -737,25 +736,25 @@ check_fr_104:
     moveq   #13, d0
     rts
 
+; ---------------------------------------------------------------
+; Patched and original TOS 2.06
+; ---------------------------------------------------------------
+check_tos_206:
+    cmp.w   #7, $1c(a1)                 
+    beq.s   check_patchs
 
-; ---------------------------------------------------------------
-; TOS 2.06
-; ---------------------------------------------------------------
+; German 2.06
 check_de_206:
-    cmp.w   #3, $1c(a1)                 ; is German
-    bne.s   check_patched_tos
+    cmp.w   #3, $1c(a1)                 
+    bne.s   check_us_206
 
     lea     t3m(pc), a0
     bsr     show_found_TOS_msg
     moveq   #3, d0
     rts
 
-check_patched_tos:
-    cmp.w   #7, $1c(a1)                 ; shouldn't be 00 00 ?
-    beq.s   check_patchs
-
+; US 2.06
 check_us_206:
-    ;Is US TOS 2.06
     cmp.w   #0, $1c(a1)
     bne.s   check_sw_206
 
@@ -764,7 +763,7 @@ check_us_206:
     moveq   #6, d0
     rts
 
-; Is SW TOS 2.06
+; SW TOS 2.06
 check_sw_206:
     cmp.w   #$0d, $1c(a1)
     bne.s   check_fr_206
@@ -774,7 +773,7 @@ check_sw_206:
     moveq   #11, d0
     rts
 
-; Is Fr TOS 2.06
+; Fr TOS 2.06
 check_fr_206:
     cmp.w   #$05, $1c(a1)
     bne     not_supported
@@ -851,7 +850,7 @@ patched_TOS:
     rts
 
 ; ---------------------------------------------------------------
-;
+; on_error
 ; ---------------------------------------------------------------
 on_error:
     bra     not_supported               ; for now
@@ -901,7 +900,7 @@ insert_filename:
 ; Messages
 ; -------------------------------------------------------------
 checking_message:
-    dc.b    $1b,$45, 'Checking ig installed... ', 0
+    dc.b    $1b,$45, 'Checking if installed... ', 0
 
 title_message:
     dc.b    $0d,$0a, 'RAMTOS/SELTOS v8 by P. Putnik & Shazz',$0d,$0a,0
@@ -913,18 +912,18 @@ found_message:
     dc.b    'found:', 0
 
 t1m:    dc.b 'TOS 1.00 German', 0
-t2m     dc.b 'TOS 1.04 UK', 0
-t3m     dc.b 'TOS 2.06 German', 0
-t4m     dc.b 'TOS 2.06 UK', 0
-t5m     dc.b 39, 'Super', 39, 'TOS 2.06 UK-patched', 0
-t6m     dc.b 'TOS 2.06 US', 0
-t7m     dc.b 'TOS 1.04 US', 0
 t8m     dc.b 'TOS 1.00 UK', 0
 t9m     dc.b 'TOS 1.00 US', 0
+t2m     dc.b 'TOS 1.04 UK', 0
+t7m     dc.b 'TOS 1.04 US', 0
 t10m    dc.b 'TOS 1.04 German', 0
+t13m    dc.b 'TOS 1.04 French', 0
+t3m     dc.b 'TOS 2.06 German', 0
+t4m     dc.b 'TOS 2.06 UK', 0
+t6m     dc.b 'TOS 2.06 US', 0
 t11m    dc.b 'TOS 2.06 Swedish', 0
 t12m    dc.b 'TOS 2.06 French', 0
-t13m    dc.b 'TOS 1.04 French', 0
+t5m     dc.b 39, 'Super', 39, 'TOS 2.06 UK-patched', 0
 
 ;Image file name
 filename:
