@@ -9,7 +9,7 @@ This branch is adding:
 - Support TOS 2.06 FR and TOS 1.04 FR
 - Single cleaned source code file for `RAMTOS`, `RAMTOSB` and `SELTOS` (using devpac defines)
 - Removed CRC check for all supported TOS 2.06
-- Python tool to identify potential non-reloc addresses
+- Python tool to identify potential non-reloc addresses and to match existing non-reloc addresses with other TOS versions.
 - MEMTOP and THEMD patches
 - .ST and .MSA floppy image generation to load TOS from floppy at boot
 
