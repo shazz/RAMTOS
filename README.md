@@ -6,8 +6,9 @@ RAMTOS and SELTOS are written by Pera Putnik and available as free and open sour
 Please refer to this [page](https://atari.8bitchip.info/astopensw.php) for more information.
 
 This branch is adding:
-- Support TOS 2.06 French
-- Support TOS 1.04 French, Dutch, Spanish and Swedish
+- Support for TOS 2.06 French
+- Support for TOS 1.04 French, Dutch, Spanish and Swedish
+- Support for TOS 1.00 French
 - Single cleaned source code file for `RAMTOS`, `RAMTOSB` and `SELTOS` (using devpac defines)
 - Removed CRC check for all supported TOS 2.06
 - Python tool to identify potential non-reloc addresses and to match existing non-reloc addresses with other TOS versions.
