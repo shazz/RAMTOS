@@ -1,10 +1,12 @@
 echo Rebuild in case of
 ./build.sh
 
-echo Building floppy disk
+echo Building floppy disk using TOS 2.06 FR
 mkdir -p build/ramtos
 mkdir -p build/ramtos/AUTO
-cp TOS/TOS206FR.IMG build/ramtos/RTOS.IMG
+# cp TOS/TOS206FR.IMG build/ramtos/RTOS.IMG
+cp TOS/TOS100FR.IMG build/ramtos/RTOS.IMG
+cp tests/FLOPPY.INF build/ramtos/DESKTOP.INF
 cp build/RAMTOS8B.TOS build/ramtos/AUTO/RAMTOS8B.PRG
 cp -r tests/SYSINFO build/ramtos/
 

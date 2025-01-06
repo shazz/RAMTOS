@@ -13,6 +13,7 @@
 ; TOS 2.06 patched to remove CRC ROM check (01/2025)
 ; Improved SELTOS key pressed input (01/2025)
 ; Added support for French, Spanish, Swedish, Dutch TOS 1.04 (01/2025)
+; Added support for French TOS 1.00 (01/2025)
 ; Shazz / MJJ Prod
 
 ; ---------------------------------------------------------------------
@@ -20,7 +21,7 @@
 ; ---------------------------------------------------------------------
 
 ; Supports:
-; - TOS 1.00 German, US, UK
+; - TOS 1.00 German, US, UK, French
 ; - TOS 1.04 US, UK, German, French, Spanish, Dutch
 ; - TOS 2.06 German, US, UK, Swedish, French
 ; - 'Super'TOS 2.06 UK patched
@@ -41,7 +42,7 @@
 ; But it will find some code, data too, which are not absolute ROM addresses
 ; so we need to make tables containing those,  not to reloc addresses
 ; Such tables are much shorter
-; Here they are at end of code with non_rel_tos100de - non_rel_tos100de1 labels
+; Here they are at end of code with non_rel_tos_xyz labels
 ; Finding all those addresses is most of work when adding support for new
 ; TOS (language) version
 
@@ -329,11 +330,11 @@ get_params:
 
     ifeq _SELTOS_
     ;Check is yet installed
-    cmpi.l  #$54323036, $3F8.w ;tos206
+    cmpi.l  #$54323036, $3F8.w          ; tos206
     beq.s   anyway
-    cmpi.l  #$54313030, $3F8.w ;tos100
+    cmpi.l  #$54313030, $3F8.w          ; tos100
     beq.s   anyway
-    cmpi.l  #$54313034, $3F8.w ;tos104
+    cmpi.l  #$54313034, $3F8.w          ; tos104
     bne.s   load_tos_image
 
 anyway:
@@ -420,7 +421,7 @@ load_tos_image:
     move.l  a6, MEMTOP.w                ; now change memtop
 
     move.l  required_space, d0
-    sub.l   d0, THEMD+8.w                ; Change Gemdos first free memory block 0f 512 bytes
+    sub.l   d0, THEMD+8.w               ; Change Gemdos first free memory block 0f 512 bytes
     ; themd
     ;    typedef struct md
     ;    {
@@ -505,19 +506,19 @@ not_in_rom:
     move.w  PARAM_CRC_START_OFFSET_FIELD(a2), d0  
     ; get crcok routine start offset
     move.w  PARAM_CRC_END_OFFSET_FIELD(a2), d1   
-    beq.s   .no_crc                   ; if not 0
-    move.l  a4, a0                    ; apply offset to TOS start
+    beq.s   .no_crc                     ; if not 0
+    move.l  a4, a0                      ; apply offset to TOS start
     adda.w  d0, a0
-    move.w  #$6000, (a0)+             ; patch existing move.l #banksize,d7
-    move.w  d1, (a0)+                 ; by bra.w crcok and nop
-    move.w  #$4e71, (a0)+             ; ref: https://github.com/th-otto/tos3x/blob/master/bios/startup.S#L1750
+    move.w  #$6000, (a0)+               ; patch existing move.l #banksize,d7
+    move.w  d1, (a0)+                   ; by bra.w crcok and nop
+    move.w  #$4e71, (a0)+               ; ref: https://github.com/th-otto/tos3x/blob/master/bios/startup.S#L1750
 
 .no_crc:
 
     ; attempt to change Reset vector: Initial PC   
     ; move.l  a4, a0
     ; adda.l  #$30, a0
-    ; move.l  a0, $4.w                    ; now change reset to RAMTOS reset
+    ; move.l  a0, $4.w                  ; now change reset to RAMTOS reset
 
     jmp     (a4)                        ; reset via ramtos!
 
@@ -677,7 +678,7 @@ check_de_100:
     cmp.w   #3, $1c(a1)                 ; is german
     bne.s   check_uk_100
 
-    lea     t1m(pc), a0
+    lea     t100_de(pc), a0
     bsr     show_found_TOS_msg
     moveq   #1, d0
     rts
@@ -686,18 +687,27 @@ check_uk_100:
     cmp.w   #7, $1c(a1) ;is UK
     bne.s   check_us_100
 
-    lea     t8m(pc), a0
+    lea     t100_uk(pc), a0
     bsr     show_found_TOS_msg
     moveq   #8, d0
     rts
 
 check_us_100:
     cmp.w   #0, $1c(a1) ;is US
-    bne.s   not_supported
+    bne.s   check_fr_100
 
-    lea     t9m(pc), a0
+    lea     t100_us(pc), a0
     bsr     show_found_TOS_msg
     moveq   #9, d0
+    rts
+
+check_fr_100:
+    cmp.w   #5, $1c(a1) ;is fr
+    bne.s   not_supported
+
+    lea     t100_fr(pc), a0
+    bsr     show_found_TOS_msg
+    moveq   #17, d0
     rts
 
 ; ---------------------------------------------------------------
@@ -714,7 +724,7 @@ check_uk_104:
     cmp.w   #7, $1c(a1)                 ;is English
     bne.s   check_us_104
 
-    lea     t2m(pc), a0
+    lea     t104_uk(pc), a0
     bsr     show_found_TOS_msg
     moveq   #2, d0
     rts
@@ -723,7 +733,7 @@ check_us_104:
     cmp.w   #0, $1c(a1)
     bne.s   check_de_104
 
-    lea     t7m(pc), a0
+    lea     t104_us(pc), a0
     bsr     show_found_TOS_msg
     moveq   #7, d0
     rts
@@ -732,7 +742,7 @@ check_de_104:
     cmp.w   #3, $1c(a1)
     bne.s   check_fr_104
 
-    lea     t10m(pc), a0
+    lea     t104_de(pc), a0
     bsr     show_found_TOS_msg
     moveq   #10, d0
     rts
@@ -741,7 +751,7 @@ check_fr_104:
     cmp.w   #5, $1c(a1)
     bne.s   check_es_104
 
-    lea     t13m(pc), a0
+    lea     t104_fr(pc), a0
     bsr     show_found_TOS_msg
     moveq   #13, d0
     rts
@@ -750,7 +760,7 @@ check_es_104:
     cmp.w   #9, $1c(a1)
     bne.s   check_sw_104
 
-    lea     t14m(pc), a0
+    lea     t104_es(pc), a0
     bsr     show_found_TOS_msg
     moveq   #14, d0
     rts
@@ -760,7 +770,7 @@ check_sw_104:
     cmp.w   #$d, $1c(a1)
     bne.s   check_nl_104
 
-    lea     t15m(pc), a0
+    lea     t104_sw(pc), a0
     bsr     show_found_TOS_msg
     moveq   #15, d0
     rts
@@ -770,7 +780,7 @@ check_nl_104:
     cmp.w   #$1b, $1c(a1)
     bne     not_supported
 
-    lea     t16m(pc), a0
+    lea     t104_nl(pc), a0
     bsr     show_found_TOS_msg
     moveq   #16, d0
     rts
@@ -787,7 +797,7 @@ check_de_206:
     cmp.w   #3, $1c(a1)                 
     bne.s   check_us_206
 
-    lea     t3m(pc), a0
+    lea     t206_de(pc), a0
     bsr     show_found_TOS_msg
     moveq   #3, d0
     rts
@@ -797,7 +807,7 @@ check_us_206:
     cmp.w   #0, $1c(a1)
     bne.s   check_sw_206
 
-    lea     t6m(pc), a0
+    lea     t206_us(pc), a0
     bsr     show_found_TOS_msg
     moveq   #6, d0
     rts
@@ -807,7 +817,7 @@ check_sw_206:
     cmp.w   #$0d, $1c(a1)
     bne.s   check_fr_206
 
-    lea     t11m(pc), a0
+    lea     t206_sw(pc), a0
     bsr     show_found_TOS_msg
     moveq   #11, d0
     rts
@@ -817,7 +827,7 @@ check_fr_206:
     cmp.w   #$05, $1c(a1)
     bne     not_supported
 
-    lea     t12m(pc), a0
+    lea     t206_fr(pc), a0
     bsr     show_found_TOS_msg
     moveq   #12, d0
     rts
@@ -873,7 +883,7 @@ check_patchs:
     cmp.w   #$00e0, stack               ; is patched
     beq.s   patched_TOS
 
-    lea     t4m(pc), a0
+    lea     t206_uk(pc), a0
     bsr     show_found_TOS_msg
     moveq   #4, d0
     rts
@@ -883,7 +893,7 @@ check_patchs:
 ; for UK SuperTOS
 ; ---------------------------------------------------------------
 patched_TOS:
-    lea     t5m(pc), a0
+    lea     t206_x(pc), a0
     bsr     show_found_TOS_msg
     moveq   #5, d0
     rts
@@ -945,29 +955,31 @@ title_message:
     dc.b    $0d,$0a, 'RAMTOS/SELTOS v8 by P. Putnik & Shazz',$0d,$0a,0
 
 search_message:
-    dc.b    $0d,$0a, 'Searching ROM-TOS images... ', 0
+    dc.b    $0d,$0a, 'Searching TOS images... ', 0
 
 found_message:
     dc.b    'found:', 0
 
-t1m:    dc.b 'TOS 1.00 German', 0
-t8m     dc.b 'TOS 1.00 UK', 0
-t9m     dc.b 'TOS 1.00 US', 0
-t2m     dc.b 'TOS 1.04 UK', 0
-t7m     dc.b 'TOS 1.04 US', 0
+t100_de:    dc.b 'TOS 1.00 German', 0
+t100_uk:    dc.b 'TOS 1.00 UK', 0
+t100_us:    dc.b 'TOS 1.00 US', 0
+t100_fr:    dc.b 'TOS 1.00 French', 0
 
-t10m    dc.b 'TOS 1.04 German', 0
-t13m    dc.b 'TOS 1.04 French', 0
-t14m    dc.b 'TOS 1.04 Spanish', 0
-t15m    dc.b 'TOS 1.04 Swedish', 0
-t16m    dc.b 'TOS 1.04 Dutch', 0
+t104_uk:    dc.b 'TOS 1.04 UK', 0
+t104_us:    dc.b 'TOS 1.04 US', 0
+t104_de:    dc.b 'TOS 1.04 German', 0
+t104_fr:    dc.b 'TOS 1.04 French', 0
+t104_es:    dc.b 'TOS 1.04 Spanish', 0
+t104_sw:    dc.b 'TOS 1.04 Swedish', 0
+t104_nl:    dc.b 'TOS 1.04 Dutch', 0
 
-t3m     dc.b 'TOS 2.06 German', 0
-t4m     dc.b 'TOS 2.06 UK', 0
-t6m     dc.b 'TOS 2.06 US', 0
-t11m    dc.b 'TOS 2.06 Swedish', 0
-t12m    dc.b 'TOS 2.06 French', 0
-t5m     dc.b 39, 'Super', 39, 'TOS 2.06 UK-patched', 0
+t206_uk:    dc.b 'TOS 2.06 UK', 0
+t206_us:    dc.b 'TOS 2.06 US', 0
+t206_de:    dc.b 'TOS 2.06 German', 0
+t206_fr:    dc.b 'TOS 2.06 French', 0
+t206_sw:    dc.b 'TOS 2.06 Swedish', 0
+
+t206_x:     dc.b 39, 'Super', 39, 'TOS 2.06 UK-patched', 0
 
 ;Image file name
 filename:
@@ -981,7 +993,7 @@ load_err_message:
     dc.b    $0d,$0a, 'Error while loading!', 0
 
 anyway_message:
-    dc.b    $0d,$0a, 'RAMTOS already installed.'
+    dc.b    $0d,$0a, 'RAMTOS/SELTOS already installed.'
     dc.b    $0d,$0a, 'Load anyway ? ', 0
 
 ;Install message
@@ -1001,7 +1013,7 @@ unsupported_message:
 
     ifeq _RAMTOS_
 selection_message:
-    dc.b    $0d,$0a,$0d,$0a, 'select TOS to install  1-'
+    dc.b    $0d,$0a,$0d,$0a, 'select TOS to install: 1-'
 selection2_message:
     dc.b    '1:', 0
     endc
@@ -1214,6 +1226,17 @@ param16_tos104nl
     dc.w    0
     dc.w    0
 
+;German 1.00
+param17_tos100fr:
+    ds.b    14
+    dc.w    $00FC, $00FF
+    dc.l    $30000
+    dc.l    non_rel_tos100fr
+    dc.w    $74
+    dc.l    $54313030
+    dc.w    0
+    dc.w    0
+
 ; -------------------------------------------------------------
 ; Non-relocating tables
 ; this are adresses which are not for reloc!
@@ -1271,6 +1294,38 @@ non_rel_tos100us_uk
     dc.l    $2b30e
     dc.l    $2b316
     dc.l    $2c160
+    dc.l    0
+
+; fr tos 1.00
+; works but 4 bombs on sysinfo, probably something missing
+non_rel_tos100fr:
+    dc.l    $17c8
+    dc.l    $17d8
+    dc.l    $252e
+    dc.l    $2566
+    dc.l    $28e6   ; ?
+    dc.l    $2bb8
+    ; dc.l    $2b9a   ; $2b9a de auto => not fc
+    ; dc.l    $2b40   ; $2b40 us auto => not fc
+    dc.l    $85d8   ; $85ba de, $8560 us looks ok
+    dc.l    $9d0e   ; ?
+    dc.l    $a8e6   ; $a8c8 de, $a86e us looks ok
+    dc.l    $fc08
+    dc.l    $126f0
+    dc.l    $1349c
+    dc.l    $135d8
+    dc.l    $13bd4
+    dc.l    $13d8a
+    dc.l    $14634
+    dc.l    $14734
+    dc.l    $20b14
+    dc.l    $20b38
+    dc.l    $21076
+    dc.l    $2b2f4    ; $2afbc de, $2b308 us, looks ok
+    dc.l    $2b2fa    ; $2afc2 de, $2b30e us, looks ok
+    dc.l    $2b302    ; $2afca de, $2b316 us, looks ok
+    dc.l    $2c14c    ; => should not be relocated and stay 660000fc
+    dc.l    $2c290
     dc.l    0
 
 ;uk tos 1.04
@@ -1436,6 +1491,7 @@ non_rel_tos104nl:
     dc.l    $2a67a
     dc.l    $2a67c
     dc.l    $2eab4
+    dc.l    0
 
 ;uk and us tos 2.06
 non_rel_tos206us_uk
