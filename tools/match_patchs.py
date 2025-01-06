@@ -14,22 +14,25 @@ def find_address(addr: int, listing: List[str], instructions_range):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--tos-version", choices=list(tos_versions.keys()), help="tos version", default="1.04")
-    parser.add_argument("--country", choices=["fr", "de", "us", "uk", "sw", "x"], help="country", default="de")
+    parser.add_argument("--source-country", choices=["fr", "de", "us", "uk", "sw", "x"], help="country", default="de")
+    parser.add_argument("--target-country", choices=["fr", "de", "us", "uk", "sw", "x", "es", "nl"], help="country", default="fr")
 
     args = parser.parse_args()
-    country = args.country
+    source_country = args.source_country
+    target_country = args.target_country
     target_tos_version = args.tos_version
-    tos_id = f"TOS{target_tos_version.replace(".", "")}{country.upper()}"
+    source_tos_id = f"TOS{target_tos_version.replace(".", "")}{source_country.upper()}"
+    target_tos_id = f"TOS{target_tos_version.replace(".", "")}{target_country.upper()}"
 
-    print(f"Loading benchmark TOS: {tos_id}")
-    with open(f"tmp/{tos_id}.ls") as f:
+    print(f"Loading benchmark TOS: {source_tos_id}")
+    with open(f"tmp/{source_tos_id}.ls") as f:
         source_disassembly = f.readlines() #[line.strip() for line in f.readlines()]
 
-    print(f"Loading trget TOS: TOS104FR")
-    with open("tmp/TOS104FR.ls") as f:
+    print(f"Loading target TOS: {target_tos_id}")
+    with open(f"tmp/{target_tos_id}.ls") as f:
         target_disassembly = f.readlines()
 
-    addresses = non_reloc_tables[tos_id]
+    addresses = non_reloc_tables[source_tos_id]
     total_addresses_matches = {}
 
     for instructions_range in range(6, 0, -1): 
@@ -95,7 +98,7 @@ if __name__ == "__main__":
 
     total_addresses_matches = dict(sorted(total_addresses_matches.items()))
     for address, match in total_addresses_matches.items():
-        print(f"{hex(address)}: {hex(match) if match is not None else None}")
+        print(f"{hex(address).replace("0x", "$")}: {hex(match).replace("0x", "$") if match is not None else None}")
     print(f"matches: {sum(1 for value in total_addresses_matches.values() if value is not None)} / {len(total_addresses_matches)}")
         
 

@@ -1,5 +1,10 @@
 
-; TOS Ram loader
+; TOS Ram loader: RAMTOS / SELTOS
+
+; ---------------------------------------------------------------------
+; Change log
+; ---------------------------------------------------------------------
+
 ; Version for direct load at 27. July 2006.
 ; Added support for Swedish TOS 2.06 on March 9 2008.
 ; P. Putnik
@@ -7,13 +12,18 @@
 ; Cleaning, added support for French TOS 2.06 (12/2024)
 ; TOS 2.06 patched to remove CRC ROM check (01/2025)
 ; Improved SELTOS key pressed input (01/2025)
-; Added support for French TOS 1.04 (01/2025)
+; Added support for French, Spanish, Swedish, Dutch TOS 1.04 (01/2025)
 ; Shazz / MJJ Prod
 
-; Recognises TOS 1.00 German, US & (UK- ?? not tested)
-; TOS 1.04 US, UK, German, French
-; TOS 2.06 German, US, UK, Swedish, French
-; 'Super'TOS 2.06 UK patched
+; ---------------------------------------------------------------------
+; Info
+; ---------------------------------------------------------------------
+
+; Supports:
+; - TOS 1.00 German, US, UK
+; - TOS 1.04 US, UK, German, French, Spanish, Dutch
+; - TOS 2.06 German, US, UK, Swedish, French
+; - 'Super'TOS 2.06 UK patched
 
 ; Principle of work:
 ;
@@ -50,7 +60,7 @@ MEMVAL3                         equ $51A                ; $00051A|long |If $5555
 MEMVAL3_VALID                   equ $5555aaaa
 
 MAX_FILES                       equ 9
-NOT_SUPPORTED                   equ 14
+NOT_SUPPORTED                   equ 20
 RESVECTOR_MAGIC                 equ $31415926           ; magic number to setup the reset vector
 PARAMS_SIZE                     equ param2_tos104uk-param1_tos100de
 
@@ -729,11 +739,40 @@ check_de_104:
 
 check_fr_104:
     cmp.w   #5, $1c(a1)
-    bne     not_supported
+    bne.s   check_es_104
 
     lea     t13m(pc), a0
     bsr     show_found_TOS_msg
     moveq   #13, d0
+    rts
+
+check_es_104:
+    cmp.w   #9, $1c(a1)
+    bne.s   check_sw_104
+
+    lea     t14m(pc), a0
+    bsr     show_found_TOS_msg
+    moveq   #14, d0
+    rts
+
+; Swedish 1.04
+check_sw_104:
+    cmp.w   #$d, $1c(a1)
+    bne.s   check_nl_104
+
+    lea     t15m(pc), a0
+    bsr     show_found_TOS_msg
+    moveq   #15, d0
+    rts
+
+; Dutch 1.04
+check_nl_104:
+    cmp.w   #$1b, $1c(a1)
+    bne     not_supported
+
+    lea     t16m(pc), a0
+    bsr     show_found_TOS_msg
+    moveq   #16, d0
     rts
 
 ; ---------------------------------------------------------------
@@ -916,8 +955,13 @@ t8m     dc.b 'TOS 1.00 UK', 0
 t9m     dc.b 'TOS 1.00 US', 0
 t2m     dc.b 'TOS 1.04 UK', 0
 t7m     dc.b 'TOS 1.04 US', 0
+
 t10m    dc.b 'TOS 1.04 German', 0
 t13m    dc.b 'TOS 1.04 French', 0
+t14m    dc.b 'TOS 1.04 Spanish', 0
+t15m    dc.b 'TOS 1.04 Swedish', 0
+t16m    dc.b 'TOS 1.04 Dutch', 0
+
 t3m     dc.b 'TOS 2.06 German', 0
 t4m     dc.b 'TOS 2.06 UK', 0
 t6m     dc.b 'TOS 2.06 US', 0
@@ -1126,12 +1170,45 @@ param12_tos206fr
     dc.w    $7fa               ; crc start routine offset
     dc.w    $98                ; crcok start routine offset
 
-;UK 1.04
+; French 1.04
 param13_tos104fr
     ds.b    14
     dc.w    $00FC, $00FF
     dc.l    $30000
     dc.l    non_rel_tos104fr
+    dc.w    $80
+    dc.l    $54313034
+    dc.w    0
+    dc.w    0
+
+; Spanish 1.04
+param14_tos104es
+    ds.b    14
+    dc.w    $00FC, $00FF
+    dc.l    $30000
+    dc.l    non_rel_tos104es
+    dc.w    $80
+    dc.l    $54313034
+    dc.w    0
+    dc.w    0
+
+; Swedish 1.04
+param15_tos104sw
+    ds.b    14
+    dc.w    $00FC, $00FF
+    dc.l    $30000
+    dc.l    non_rel_tos104sw
+    dc.w    $80
+    dc.l    $54313034
+    dc.w    0
+    dc.w    0
+
+; Dutch 1.04
+param16_tos104nl
+    ds.b    14
+    dc.w    $00FC, $00FF
+    dc.l    $30000
+    dc.l    non_rel_tos104nl
     dc.w    $80
     dc.l    $54313034
     dc.w    0
@@ -1277,6 +1354,88 @@ non_rel_tos104fr:
     dc.l    $2a6ce              ; manually added
     dc.l    $2ec00              ; manually added
     dc.l    0
+
+; swedish 104
+non_rel_tos104sw:
+    dc.l    $117e               ; => $117e,  move.b  #$fe, (a2)+ [known in some TOS]
+    dc.l    $1514               ; => $1414, bsr.w  $fc1612 [known in some TOS]
+    dc.l    $3f2a               ; => $3f0c, beq.w  $fc4028 [new!]
+    dc.l    $5626               ; => $5608, bra.w  $fc5724 [new!]
+    dc.l    $6184               ; => $6166, bra.w  $fc6280 [new!]
+    dc.l    $860c               ; => $85ee, bne.w  $fc870a [new!]
+    dc.l    $892c               ; => $890e, add.l  #$fe, d6 [new!]
+    dc.l    $15c94              ; => $15c76
+    dc.l    $1714c              ; => $1712e
+    dc.l    $1749e              ; => $17480
+    dc.l    $18456              ; => $18438
+    dc.l    $1ac12              ; => $1abf4
+    dc.l    $25238              ; => $2521a
+    dc.l    $272ec              ; => $272ca
+    dc.l    $288e8              ; => $288ca
+    dc.l    $29694              ; => $29676
+    dc.l    $297d0              ; => $297b2
+    dc.l    $29b70              ; => $29b52
+    dc.l    $29d26              ; => $29d08
+    dc.l    $2a5d0              ; => $2a5b2
+    dc.l    $2a6d0              ; => $2a6b2
+    dc.l    $2a6ce              ; manually added
+    dc.l    $2ea1e              ; manually added
+    dc.l    0
+
+; Spanish 1.04
+non_rel_tos104es:
+    dc.l    $117e               ; => $117e 
+    dc.l    $1514               ; => $1514
+    dc.l    $3a4c               ; => $3a4c
+    dc.l    $3f38               ; => $3f2a
+    dc.l    $5634               ; => $5626
+    dc.l    $6192               ; => $6184
+    dc.l    $861a               ; => $860c
+    dc.l    $893a               ; => $892c
+    dc.l    $15ca2              ; => $15c94
+    dc.l    $1715a              ; => $1714c
+    dc.l    $174aa              ; => $1749e
+    dc.l    $18464              ; => $18456
+    dc.l    $1ac20              ; => $1ac12
+    dc.l    $2538a              ; => $25238
+    dc.l    $272fa              ; => $272ec
+    dc.l    $288f6              ; => $288e8
+    dc.l    $296a2              ; => $29694
+    dc.l    $297de              ; => $297d0
+    dc.l    $297de              ; => $29b70
+    dc.l    $29d34              ; => $29d26
+    dc.l    $2a5de              ; => $2a5d0
+    dc.l    $2a6de              ; => $2a6d0
+    dc.l    $2a6dc              ; => $2a6ce
+    dc.l    $2eb8c              ; => $2ec00
+    dc.l    0    
+
+; Dutch TOS 1.04
+non_rel_tos104nl:
+    dc.l    $117e
+    dc.l    $1514
+    dc.l    $3a4c
+    dc.l    $3eb2 ; manually added $3f2a fr, looks ok
+    dc.l    $55ae
+    dc.l    $610c
+    dc.l    $8594
+    dc.l    $88b4 ; manually added $892c f, looks ok
+    dc.l    $15c18
+    dc.l    $170d0 ; manually added $1714c fr, looks ok
+    dc.l    $17422 ; manually added $1749e fr
+    dc.l    $18402
+    dc.l    $1abbe
+    dc.l    $25328
+    dc.l    $27298
+    dc.l    $28894
+    dc.l    $29640
+    dc.l    $2977c
+    dc.l    $29b1c
+    dc.l    $29cd2
+    dc.l    $2a57c
+    dc.l    $2a67a
+    dc.l    $2a67c
+    dc.l    $2eab4
 
 ;uk and us tos 2.06
 non_rel_tos206us_uk

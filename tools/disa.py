@@ -114,7 +114,7 @@ def disassemble(target_tos_version: str, country: str, tos_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--tos-version", choices=list(tos_versions.keys()), help="tos version", default="2.06")
-    parser.add_argument("--country", choices=["fr", "de", "us", "uk", "sw", "x"], help="country", default="fr")
+    parser.add_argument("--country", choices=["fr", "de", "us", "uk", "sw", "x", "es", "nl"], help="country", default="fr")
     parser.add_argument("--images-dir", help="TOS directory", default="TOS", required=False)
     args = parser.parse_args()
 
